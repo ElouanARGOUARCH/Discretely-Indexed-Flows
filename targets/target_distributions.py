@@ -135,9 +135,9 @@ class Target:
         if choice == "Bimodal Dimension 1":
             self.p = 1
             num_component = 2
-            means = torch.tensor([[5.], [-5.]])
+            means = torch.tensor([[-7.], [7.]])
             covs = torch.eye(self.p).view(1, self.p, self.p).repeat(num_component, 1, 1)
-            comp = torch.tensor([1., 1.5])
+            comp = torch.tensor([1., 1])
             mvn_target = MultivariateNormal(means, covs)
             cat = Categorical(comp / torch.sum(comp))
             mix_target = MixtureSameFamily(cat, mvn_target)

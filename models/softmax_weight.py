@@ -1,14 +1,13 @@
 import torch
 from torch import nn
 
-from models.Utils.abstract.abstract_weight import Weight
-
-
-class SoftmaxNN(Weight):
-    def __init__(self, K, p, hidden_dimensions, mode = 'NN'):
+class SoftmaxWeight(nn.Module):
+    def __init__(self, K, p, hidden_dimensions =[], mode = 'NN'):
         super().__init__()
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.K = K
         self.p = p
+        self.mode = mode
         if self.mode == 'NN':
             network_dimensions = [self.p] + hidden_dimensions + [self.K]
             network = []
@@ -17,23 +16,24 @@ class SoftmaxNN(Weight):
             network.pop()
             self.f = nn.Sequential(*network)
         elif self.mode == 'Linear':
-            self.a = nn.Parameter(torch.randn(self.K, self.P))
-            self.log_b = nn.Parameter(torch.randn(self.K, self.p))
+            self.a = nn.Parameter(torch.randn(self.K, self.p))
+            self.log_b = nn.Parameter(torch.randn(self.K))
         elif self.mode == 'Constant':
-            self.log_pi = nn.Parameter(torch.randn(self.K, self.p))
+            self.a =torch.zeros(self.K, self.p).to(self.device)
+            self.log_b = nn.Parameter(torch.randn(self.K))
         self.to(self.device)
 
     def log_prob(self, z):
         if self.mode =='NN':
             log_w = self.f.forward(z)
-        elif self.mode == 'Linear':
+        elif self.mode == 'Linear' or self.mode == 'Constant':
             log_w = z @ self.a.T + self.log_b
         return log_w - torch.logsumexp(log_w, dim=-1, keepdim=True)
 
     def unormalized_log_prob(self,z):
         if self.mode =='NN':
             return self.f.forward(z)
-        elif self.mode =='Linear':
+        elif self.mode =='Linear' or self.mode == 'Constant':
             return z @ self.a.T + self.log_b
 
     def get_parameters(self):

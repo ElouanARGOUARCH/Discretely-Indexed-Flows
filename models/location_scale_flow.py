@@ -1,11 +1,11 @@
 import torch
 from torch import nn
 
-class LocationScale(nn.Module):
+class LocationScaleFlow(nn.Module):
     def __init__(self, K, p, initial_m = None, initial_log_s = None, fixed_m = None, fixed_log_s = None):
 
         super().__init__()
-
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.K = K
         self.p = p
 
@@ -31,17 +31,17 @@ class LocationScale(nn.Module):
 
         self.to(self.device)
 
-    def backward(self, x):
-        desired_size = list(x.shape)
-        desired_size.insert(-1, self.K)
-        X = x.unsqueeze(-2).expand(desired_size)
-        return X * torch.exp(self.log_s).expand_as(X) + self.m.expand_as(X)
-
-    def forward(self, z):
+    def backward(self, z):
         desired_size = list(z.shape)
         desired_size.insert(-1, self.K)
         Z = z.unsqueeze(-2).expand(desired_size)
-        return (Z-self.m.expand_as(Z))/torch.exp(self.log_s).expand_as(Z)
+        return Z * torch.exp(self.log_s).expand_as(Z) + self.m.expand_as(Z)
+
+    def forward(self, x):
+        desired_size = list(x.shape)
+        desired_size.insert(-1, self.K)
+        X = x.unsqueeze(-2).expand(desired_size)
+        return (X-self.m.expand_as(X))/torch.exp(self.log_s).expand_as(X)
 
     def log_det_J(self,x):
         return -self.log_s.sum(1)

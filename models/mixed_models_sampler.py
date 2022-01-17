@@ -5,14 +5,14 @@ from torch import nn
 from torch.distributions import Categorical
 from tqdm import tqdm
 
-from models.Abstract_Models.transport_sampler import TransportSampler
-from models.Utils.reference.multivariate_normal import MultivariateNormal
-from models.Utils.flow.location_scale import LocationScale
-from models.Utils.weight.softmax_linear import SoftmaxLinear
+from matplotlib.ticker import MaxNLocator
+from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
+from models.multivariate_normal_reference import MultivariateNormalReference
+from models.location_scale_flow import LocationScaleFlow
+from models.softmax_weight import SoftmaxWeight
+from utils.color_visual import *
 
-from models.Utils.color_visual import *
-
-class TMCSamplerLayer(nn.Module):
+class DIFSamplerLayer(nn.Module):
     def __init__(self,p, K, p_log_density):
 
         super().__init__()
@@ -20,8 +20,8 @@ class TMCSamplerLayer(nn.Module):
         self.p = p
         self.K = K
 
-        self.w = SoftmaxLinear(self.K, self.p)
-        self.T = LocationScale(self.K, self.p)
+        self.w = SoftmaxWeight(self.K, self.p)
+        self.T = LocationScaleFlow(self.K, self.p)
 
         self.q_log_density = None
         self.p_log_density = p_log_density
@@ -96,16 +96,18 @@ class RealNVPSamplerLayer(nn.Module):
             log_det += torch.sum(log_s, dim = -1)
         return self.q_log_density(z) + log_det
 
-class MixedModelSampler(TransportSampler):
+class MixedModelSampler(nn.Module):
     def __init__(self, target_log_density, p,structure, initial_reference=None):
 
-        super().__init__(target_log_density,p)
-
+        super().__init__()
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.target_log_density = target_log_density
+        self.p = p
         self.structure = structure
         self.N = len(self.structure)
 
         if initial_reference == None:
-            self.reference = MultivariateNormal(self.p)
+            self.reference = MultivariateNormalReference(self.p)
         else:
             self.reference = initial_reference
 
@@ -114,10 +116,10 @@ class MixedModelSampler(TransportSampler):
         self.model = [structure[0][0](self.p,self.structure[0][1], p_log_density=self.target_log_density).to(self.device)]
         self.para_dict.insert(-1,{'params':self.model[0].parameters(), 'lr': self.model[0].lr})
         for i in range(1,self.N):
-            self.model.append(structure[i][0](self.p, structure[i][1], p_log_density=self.model[i-1].model_log_phi).to(self.device))
+            self.model.append(structure[i][0](self.p, structure[i][1], p_log_density=self.model[i-1].log_phi).to(self.device))
             self.para_dict.insert(-1,{'params':self.model[i].parameters(), 'lr': self.model[i].lr})
         for i in range(self.N-1):
-            self.model[i].q_log_density = self.model[i+1].model_log_psi
+            self.model[i].q_log_density = self.model[i+1].log_psi
         self.model[-1].q_log_density = self.reference.log_density
         self.optimizer = torch.optim.Adam(self.para_dict)
 
@@ -163,6 +165,37 @@ class MixedModelSampler(TransportSampler):
         self.load_state_dict(best_parameters)
         if visual:
             self.train_visual(best_loss, best_iteration, loss_values)
+
+    def train_visual(self, best_loss, best_iteration, loss_values):
+        fig = plt.figure(figsize=(12, 4))
+        ax = plt.subplot(111)
+        Y1, Y2 = best_loss - (max(loss_values) - best_loss) / 2, max(loss_values) + (
+                    max(loss_values) - best_loss) / 4
+        ax.set_ylim(Y1, Y2)
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        ax.plot(loss_values, label='Loss values during training', color='black')
+        ax.scatter([best_iteration], [best_loss], color='black', marker='d')
+        ax.axvline(x=best_iteration, ymax=(best_loss - best_loss + (max(loss_values) - best_loss) / 2) / (
+                max(loss_values) + (max(loss_values) - best_loss) / 4 - best_loss + (
+                max(loss_values) - best_loss) / 2), color='black', linestyle='--')
+        ax.text(0, best_loss - (max(loss_values) - best_loss) / 8,
+                'best iteration = ' + str(best_iteration) + '\nbest loss = ' + str(np.round(best_loss, 5)),
+                verticalalignment='top', horizontalalignment='left', fontsize=12)
+        if len(loss_values) > 30:
+            x1, x2 = best_iteration - int(len(loss_values) / 15), min(
+                best_iteration + int(len(loss_values) / 15),
+                len(loss_values) - 1)
+            k = len(loss_values) / (2.5 * (x2 - x1 + 1))
+            offset = (Y2 - Y1) / (6 * k)
+            y1, y2 = best_loss - offset, best_loss + offset
+            axins = zoomed_inset_axes(ax, k, loc='upper right')
+            axins.axvline(x=best_iteration, ymax=(best_loss - y1) / (y2 - y1), color='black', linestyle='--')
+            axins.scatter([best_iteration], [best_loss], color='black', marker='d')
+            axins.xaxis.set_major_locator(MaxNLocator(integer=True))
+            axins.plot(loss_values, color='black')
+            axins.set_xlim(x1 - .5, x2 + .5)
+            axins.set_ylim(y1, y2)
+            mark_inset(ax, axins, loc1=3, loc2=4)
 
     def model_visual(self, num_samples = 5000, flow = True):
         if self.p == 1:
@@ -233,7 +266,7 @@ class MixedModelSampler(TransportSampler):
                                       self.device)),
                                  dim=-1)
                 backward_density = [torch.exp(self.reference.log_density(grid)).reshape(delta, delta).T.cpu().detach()]
-                forward_density = [torch.exp(self.model[-1].model_log_phi(grid)).reshape(delta, delta).T.cpu().detach()]
+                forward_density = [torch.exp(self.model[-1].log_phi(grid)).reshape(delta, delta).T.cpu().detach()]
                 x_range = [[torch.min(backward_samples[0][:, 0]).item(), torch.max(backward_samples[0][:, 0]).item()]]
                 y_range = [[torch.min(backward_samples[0][:, 1]).item(), torch.max(backward_samples[0][:, 1]).item()]]
                 for i in range(self.N - 1, -1, -1):
@@ -246,7 +279,7 @@ class MixedModelSampler(TransportSampler):
                                       torch.mean(backward_samples[0][:, 2:], dim=0) * torch.ones(delta**2,
                                                                                                  self.p - 2).to(
                                           self.device)), dim=-1)
-                    backward_density.insert(0, torch.exp(self.model[i].model_log_psi(grid)).reshape(delta,
+                    backward_density.insert(0, torch.exp(self.model[i].log_psi(grid)).reshape(delta,
                                                                                                     delta).T.cpu().detach())
                     forward_density.insert(0, torch.exp(self.model[i].p_log_density(grid)).reshape(delta,
                                                                                                    delta).T.cpu().detach())
