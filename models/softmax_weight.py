@@ -29,9 +29,9 @@ class SoftmaxWeight(nn.Module):
 
     def unormalized_log_prob(self,z):
         if self.mode =='NN':
-            return torch.cat([torch.ones(z.shape[:-2]), self.f.forward(z)], dim = -1)
+            return torch.cat([torch.ones(z.shape[:-1]).unsqueeze(-1).to(self.device), self.f.forward(z)], dim = -1)
         elif self.mode =='Linear' or self.mode == 'Constant':
-            return torch.cat([torch.ones(z.shape[:-1]).unsqueeze(-1), z @ self.a.T + self.log_b], dim=-1)
+            return torch.cat([torch.ones(z.shape[:-1]).unsqueeze(-1).to(self.device), z @ self.a.T + self.log_b], dim=-1)
 
     def get_parameters(self):
         return self.state_dict()

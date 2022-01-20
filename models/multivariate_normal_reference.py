@@ -24,7 +24,7 @@ class MultivariateNormalReference(nn.Module):
         if self.p >= 2:
             cov = torch.cov(samples.T)
         else:
-            cov = torch.var(samples, dim=0) * torch.eye(self.p)
+            cov = torch.var(samples, dim=0) * torch.eye(self.p).to(self.device)
         self.distribution = torch.distributions.multivariate_normal.MultivariateNormal(
             torch.mean(samples, dim=0), cov)
 

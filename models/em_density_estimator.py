@@ -15,7 +15,7 @@ import seaborn as sns
 import pandas as pd
 
 class EMDensityEstimator(nn.Module):
-    def __init__(self,target_samples,K, initial_reference = None, initial_w = None, initial_T = None):
+    def __init__(self,target_samples,K, initial_reference = None, initial_log_b = None, initial_T = None):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.target_samples = target_samples.to(self.device)
@@ -27,10 +27,10 @@ class EMDensityEstimator(nn.Module):
         else:
             self.reference = initial_reference
 
-        if initial_w == None:
-            self.w = SoftmaxWeight(self.K, self.p, mode = 'Constant')
+        if initial_log_b == None:
+            self.pi= nn.Parameter(torch.log(torch.ones([self.K])/self.K))
         else:
-            self.w = initial_w
+            self.log_b = initial_log_b
 
         if initial_T == None:
             initial_log_s = torch.zeros(self.K, self.p).to(self.device)
@@ -42,7 +42,7 @@ class EMDensityEstimator(nn.Module):
 
     def compute_log_v(self,x):
         z = self.T.forward(x)
-        log_v = self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.T.log_det_J(x)
+        log_v = self.reference.log_density(z) + self.pi.unsqueeze(0).repeat(x.shape[0],1)+ self.T.log_det_J(x)
         return log_v - torch.logsumexp(log_v, dim = -1, keepdim= True)
 
     def sample_latent(self,x):
@@ -52,18 +52,18 @@ class EMDensityEstimator(nn.Module):
 
     def log_density(self, x):
         z = self.T.forward(x)
-        return torch.logsumexp(self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z),0,-2,-1) + self.T.log_det_J(x),dim=-1)
+        return torch.logsumexp(self.reference.log_density(z) + self.pi.unsqueeze(0).repeat(x.shape[0],1) + self.T.log_det_J(x),dim=-1)
 
     def sample_model(self, num_samples):
         z = self.reference.sample(num_samples)
         x = self.T.backward(z)
-        pick = Categorical(torch.exp(self.w.log_prob(z))).sample()
+        pick = Categorical(torch.exp(self.pi.unsqueeze(0).repeat(x.shape[0],1))).sample()
         return torch.stack([x[i,pick[i],:] for i in range(z.shape[0])])
 
     def M_step(self, batch):
         v = torch.exp(self.compute_log_v(batch))
         c = torch.sum(v, dim=0)
-        self.w.log_b = nn.Parameter(torch.log(c/torch.sum(c)))
+        self.pi = nn.Parameter(torch.log(c/torch.sum(c)))
         self.T.m = nn.Parameter(torch.sum(v.unsqueeze(-1).repeat(1, 1, self.p) * batch.unsqueeze(-2).repeat(1, self.K, 1),
                                 dim=0) / c.unsqueeze(-1))
         self.T.log_s = nn.Parameter((1/2)*torch.log(torch.sum(v.unsqueeze(-1).repeat(1, 1, self.p) * (

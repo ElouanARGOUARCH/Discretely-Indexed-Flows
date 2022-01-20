@@ -9,3 +9,4 @@ from .dif_sampler import DIFSampler
 from .location_scale_flow import LocationScaleFlow
 from .softmax_weight import SoftmaxWeight
 from .em_density_estimator import EMDensityEstimator
+from .pavage import PavageDIF

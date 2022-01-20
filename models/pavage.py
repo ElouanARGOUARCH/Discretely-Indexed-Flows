@@ -15,7 +15,7 @@ from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 import seaborn as sns
 import pandas as pd
 
-class DIFDensityEstimator(nn.Module):
+class PavageDIF(nn.Module):
     def __init__(self,target_samples,K, initial_reference = None, initial_w = None, initial_T = None):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -25,6 +25,7 @@ class DIFDensityEstimator(nn.Module):
 
         if initial_reference == None:
             self.reference = MultivariateNormalReference(self.p)
+            self.reference.estimate_moments(self.target_samples)
         else:
             self.reference = initial_reference
 
@@ -36,7 +37,7 @@ class DIFDensityEstimator(nn.Module):
         if initial_T == None:
             initial_log_s = torch.zeros(self.K, self.p).to(self.device)
             initial_m = self.target_samples[torch.randint(low= 0, high = self.target_samples.shape[0],size = [self.K])].to(self.device)
-            self.T = LocationScaleFlow(self.K, self.p, initial_m = initial_m, initial_log_s = initial_log_s)
+            self.T = LocationScaleFlow(self.K, self.p, fixed_m = initial_m, fixed_log_s = initial_log_s)
         else:
             self.T = initial_T
 
