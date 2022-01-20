@@ -72,18 +72,20 @@ class DIFDensityEstimator(nn.Module):
             log_v = self.compute_log_v(batch).detach()
             z = self.T.forward(batch)
             log_joint = self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.T.log_det_J(batch) - log_v
-            return - torch.sum(torch.exp(log_v) * log_joint)
+            return - torch.sum(torch.exp(log_v) * log_joint, dim = -1).mean()
         elif mode == 'GradientEM2':
             log_v = self.compute_log_v(batch).detach()
             z = self.T.forward(batch)
             unormalized_log_w = self.w.unormalized_log_prob(z)
-            log_joint = self.reference.log_density(z) + self.T.log_det_J(batch) - log_v + torch.diagonal(unormalized_log_w, 0, -2, -1) - torch.logsumexp(unormalized_log_w, dim=-1).detach() - torch.sum(torch.exp(unormalized_log_w), dim = -1)/(torch.sum(torch.exp(unormalized_log_w), dim = -1).detach())
-            return - torch.sum(torch.exp(log_v) * log_joint)
+            log_joint = self.reference.log_density(z) + self.T.log_det_J(batch) - log_v + torch.diagonal(unormalized_log_w, 0, -2, -1) - torch.logsumexp(unormalized_log_w, dim=-1).detach() - (torch.sum(torch.exp(unormalized_log_w), dim = -1) -torch.sum(torch.exp(unormalized_log_w), dim = -1).detach()) /(torch.sum(torch.exp(unormalized_log_w), dim = -1).detach())
+            return - torch.sum(torch.exp(log_v) * log_joint, dim = -1).mean()
 
-    def compare_gradients(self):
+    def compare_loss(self):
         loss0 = self.loss(self.target_samples, mode = 'SGD')
         loss1 = self.loss(self.target_samples, mode='GradientEM')
         loss2 = self.loss(self.target_samples, mode='GradientEM2')
+        return loss0, loss1, loss2
+
 
     def train(self, epochs, batch_size = None, visual = False, mode = 'SGD'):
         self.to(self.device)
