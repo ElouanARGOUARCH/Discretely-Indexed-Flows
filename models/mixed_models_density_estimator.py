@@ -1,17 +1,18 @@
 import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
-from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 import pandas as pd
 import seaborn as sns
 import torch
-from tqdm import tqdm
+from matplotlib.ticker import MaxNLocator
+from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 from torch import nn
 from torch.distributions import Categorical
+from tqdm import tqdm
 
-from models.multivariate_normal_reference import MultivariateNormalReference
 from models.location_scale_flow import LocationScaleFlow
+from models.multivariate_normal_reference import MultivariateNormalReference
 from models.softmax_weight import SoftmaxWeight
 from utils.color_visual import *
+
 
 class RealNVPDensityEstimatorLayer(nn.Module):
     def __init__(self,p,hidden_dim, q_log_density):
@@ -94,7 +95,7 @@ class DIFDensityEstimatorLayer(nn.Module):
         return torch.logsumexp(self.q_log_density(z) + torch.diagonal(self.w.log_prob(z),0,-2,-1) + self.T.log_det_J(x),dim=-1)
 
 class MixedModelDensityEstimator(nn.Module):
-    def __init__(self, target_samples,structure, initial_reference=None):
+    def __init__(self, target_samples,structure, initial_reference=None, estimate_reference = False):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.target_samples = target_samples.to(self.device)
@@ -104,7 +105,8 @@ class MixedModelDensityEstimator(nn.Module):
 
         if initial_reference == None:
             self.reference = MultivariateNormalReference(self.p)
-            self.reference.estimate_moments(self.target_samples)
+            if estimate_reference:
+                self.reference.estimate_moments(self.target_samples)
         else:
             self.reference = initial_reference
 

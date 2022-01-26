@@ -10,9 +10,53 @@ import math
 cuda = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 cpu = torch.device('cpu')
 
+class Uniform:
+    def __init__(self, lower, upper):
+        self.p = upper.shape[0]
+        self.lower = lower
+        self.upper = upper
+        assert torch.sum(upper>lower) == self.p, 'upper bound should be greater or equal to lower bound'
+        self.log_scale = torch.log(self.upper - self.lower)
+        self.location = (self.upper + self.lower)/2
+
+    def log_prob(self, samples):
+        condition = ((samples > self.lower).sum(-1) == self.p) * ((samples < self.upper).sum(-1) == self.p)*1
+        inverse_condition = torch.logical_not(condition) * 1
+        true = -torch.logsumexp(self.log_scale, dim = -1) * condition
+        false = torch.nan_to_num(-torch.inf*inverse_condition, nan = 0)
+        return (true + false)
+
+    def sample(self, num_samples):
+        desired_size = num_samples.copy()
+        desired_size.append(self.p)
+        return self.lower.expand(desired_size) + torch.rand(desired_size)*torch.exp(self.log_scale.expand(desired_size))
+
+class Mixture:
+    def __init__(self, distributions, weights):
+        self.distributions = distributions
+        self.number_components = len(self.distributions)
+        assert weights.shape[0] == self.number_components, 'wrong number of weights'
+        self.weights = weights/torch.sum(weights)
+
+    def log_prob(self, samples):
+        list_evaluated_distributions = []
+        for i,distribution in enumerate(self.distributions):
+            list_evaluated_distributions.append(distribution.log_prob(samples).reshape(samples.shape[:-1]).unsqueeze(1) + torch.log(self.weights[i]))
+        return(torch.logsumexp(torch.cat(list_evaluated_distributions, dim =1), dim = 1))
+
+    def sample(self, num_samples):
+        sampled_distributions = []
+        for distribution in self.distributions:
+            sampled_distributions.append(distribution.sample(num_samples).unsqueeze(1))
+        temp = torch.cat(sampled_distributions, dim = 1)
+        pick = Categorical(self.weights).sample(num_samples).squeeze(-1)
+        temp2 = torch.stack([temp[i,pick[i],:] for i in range(temp.shape[0])])
+        return temp2
+
+
 class Target:
     def __init__(self, choice, num_samples):
-        self.choices = ["Test","Hollow Circle","Orbits","Test Gaussian Dimension 1","Pyramid Dimension 1", "Test Gaussian Dimension 3", "Two circles", "Moons", "S Curve",
+        self.choices = ["Test","Sharp Edges","Sharp Edges2","Hollow Circle","Orbits","Test Gaussian Dimension 1","Pyramid Dimension 1", "Test Gaussian Dimension 3", "Two circles", "Moons", "S Curve",
                         "Multimodal Example Dimension 2", "Unormalized Dimension 1", "Normalized Dimension 1",
                         "Multimodal Dimension 1","Bimodal Dimension 1", "Problematic case",
                         "Multimodal Dimension 2","Multimodal Dimension 4","Multimodal Dimension 8","Multimodal Dimension 16","Multimodal Dimension 32","Multimodal Dimension 64","Multimodal Dimension 128","Blob Dimension 64", "Blob Dimension 128"]
@@ -23,6 +67,15 @@ class Target:
         if choice == "Test Gaussian Dimension 1":
             self.p = 1
             target = MultivariateNormal(torch.zeros(self.p), torch.eye(self.p))
+            self.target_log_density = lambda samples: target.log_prob(samples)
+            self.target_samples = target.sample([num_samples])
+
+        if choice == "Sharp Edges":
+            self.p = 1
+            temp = torch.distributions.laplace.Laplace(torch.tensor([0.]),torch.tensor([2]))
+            uniform = Uniform(torch.tensor([-2.0]), torch.tensor([2.0]))
+            uniform2 = Uniform(torch.tensor([-4.0]), torch.tensor([4.0]))
+            target = Mixture([uniform,uniform2, temp], torch.tensor([1.,2., 1.]))
             self.target_log_density = lambda samples: target.log_prob(samples)
             self.target_samples = target.sample([num_samples])
 
@@ -334,7 +387,7 @@ class Target:
             plt.figure(figsize=(10, 5))
             if self.target_log_density is not None:
                 tt = torch.linspace(torch.min(self.target_samples), torch.max(self.target_samples), 500).unsqueeze(1)
-                plt.plot(tt.cpu(), torch.exp(self.target_log_density(tt)).cpu(), label=self.choice + " density",
+                plt.plot(tt.cpu().numpy(), torch.exp(self.target_log_density(tt)).cpu().numpy(), label=self.choice + " density",
                      color='red')
             sns.histplot(self.target_samples[:num_samples][:, 0].cpu(), bins=150, color='red', stat='density', alpha=0.6,
                          label=self.choice + " samples")
