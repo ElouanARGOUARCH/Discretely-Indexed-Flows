@@ -3,9 +3,9 @@ from torch import nn
 
 class LocationScaleFlow(nn.Module):
     def __init__(self, K, p, initial_m = None, initial_log_s = None, fixed_m = None, fixed_log_s = None):
-
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cpu')
         self.K = K
         self.p = p
 

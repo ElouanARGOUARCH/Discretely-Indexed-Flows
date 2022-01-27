@@ -63,9 +63,8 @@ class RealNVPDensityEstimatorLayer(nn.Module):
 
 class DIFDensityEstimatorLayer(nn.Module):
     def __init__(self,p, K, q_log_density):
-
         super().__init__()
-
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.p = p
         self.K = K
 

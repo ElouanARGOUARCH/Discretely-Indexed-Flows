@@ -24,19 +24,19 @@ class DIFDensityEstimator(nn.Module):
         self.K = K
 
         if initial_reference == None:
-            self.reference = MultivariateNormalReference(self.p)
+            self.reference = MultivariateNormalReference(self.p).to(self.device)
         else:
             self.reference = initial_reference
 
         if initial_w == None:
-            self.w = SoftmaxWeight(self.K, self.p, [], mode = 'Linear')
+            self.w = SoftmaxWeight(self.K, self.p, [], mode = 'Linear').to(self.device)
         else:
             self.w = initial_w
 
         if initial_T == None:
             initial_log_s = torch.zeros(self.K, self.p).to(self.device)
             initial_m = self.target_samples[torch.randint(low= 0, high = self.target_samples.shape[0],size = [self.K])].to(self.device)
-            self.T = LocationScaleFlow(self.K, self.p, initial_m = initial_m, initial_log_s = initial_log_s)
+            self.T = LocationScaleFlow(self.K, self.p, initial_m = initial_m, initial_log_s = initial_log_s).to(self.device)
         else:
             self.T = initial_T
 
