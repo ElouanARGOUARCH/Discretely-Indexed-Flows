@@ -32,7 +32,7 @@ class RealNVPDensityEstimatorLayer(nn.Module):
 
         self.mask = [torch.cat([torch.zeros(int(self.p/2)), torch.ones(self.p - int(self.p/2))], dim = 0).to(self.device),torch.cat([torch.ones(int(self.p/2)), torch.zeros(self.p - int(self.p/2))], dim = 0).to(self.device)]
         self.q_log_density = q_log_density
-        self.lr = 5e-5
+        self.lr = 5e-4
         self.to(self.device)
 
     def sample_forward(self,x):
@@ -94,7 +94,7 @@ class DIFDensityEstimatorLayer(nn.Module):
         return torch.logsumexp(self.q_log_density(z) + torch.diagonal(self.w.log_prob(z),0,-2,-1) + self.T.log_det_J(x),dim=-1)
 
 class MixedModelDensityEstimator(nn.Module):
-    def __init__(self, target_samples,structure, initial_reference=None, estimate_reference = False):
+    def __init__(self, target_samples,structure, initial_reference=None, estimate_reference = True):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.target_samples = target_samples.to(self.device)

@@ -15,9 +15,10 @@ import seaborn as sns
 import pandas as pd
 
 class EMDensityEstimator(nn.Module):
-    def __init__(self,target_samples,K, initial_reference = None, initial_log_b = None, initial_T = None, mode ='diag'):
+    def __init__(self,target_samples,K, initial_reference = None, initial_log_b = None, initial_T = None, mode ='full_rank'):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cpu')
         self.target_samples = target_samples.to(self.device)
         self.p = self.target_samples.shape[-1]
         self.K = K
@@ -181,24 +182,18 @@ class EMDensityEstimator(nn.Module):
             df_target['label']= 'Data'
             df_model = pd.DataFrame(model_samples.cpu().numpy())
             df_model['label'] = 'Model'
-            df_x = pd.concat([df_target, df_model])
 
             df_reference = pd.DataFrame(reference_samples.cpu().numpy())
             df_reference['label'] = 'Reference'
             df_proxy = pd.DataFrame(proxy_samples.cpu().numpy())
             df_proxy['label'] = 'Proxy'
             df_z = pd.concat([df_reference, df_proxy])
+
             g = sns.PairGrid(df_x, hue="label", height=12 / self.p, palette= {'Data' : 'red', 'Model' : 'blue'})
-            #g.map_upper(sns.scatterplot, alpha = .4)
-            #g.map_lower(sns.kdeplot, levels =4)
             g.map_lower(sns.scatterplot, alpha=.5)
             g.map_diag(sns.histplot, bins = 60, alpha = .4, stat = 'density')
 
-
-
             g = sns.PairGrid(df_z, hue="label", height=12 / self.p, palette= {'Reference' : 'green', 'Proxy' : 'orange'})
-            #g.map_upper(sns.scatterplot, alpha = .4)
-            #g.map_lower(sns.kdeplot, levels =4)
             g.map_lower(sns.scatterplot, alpha=.5)
             g.map_diag(sns.histplot, bins = 60, alpha = .4, stat = 'density')
             if hasattr(self.reference, 'r'):
@@ -229,9 +224,8 @@ class EMDensityEstimator(nn.Module):
             df_proxy = pd.DataFrame(proxy_samples[:,perm][:,:dim_dsplayed].cpu().numpy())
             df_proxy['label'] = 'Proxy'
             df_z = pd.concat([df_reference, df_proxy])
+
             g = sns.PairGrid(df_x, hue="label", height=12 / dim_dsplayed, palette= {'Data' : 'red', 'Model' : 'blue'})
-            #g.map_upper(sns.scatterplot, alpha = .4)
-            #g.map_lower(sns.kdeplot, levels =4)
             g.map_lower(sns.scatterplot, alpha=.5)
             g.map_diag(sns.histplot, bins = 60, alpha = .4, stat = 'density')
 

@@ -5,7 +5,7 @@ class LocationScaleFlow(nn.Module):
     def __init__(self, K, p, initial_m = None, initial_log_s = None, fixed_m = None, fixed_log_s = None, mode = 'diag'):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.device = torch.device('cpu')
+        self.device =torch.device('cpu')
         self.K = K
         self.mode = mode
         self.p = p
@@ -70,7 +70,7 @@ class LocationScaleFlow(nn.Module):
         elif self.mode =='full_rank':
             S = self.chol @ self.chol.transpose(-1, -2)
             chol = torch.cholesky(S)
-            return -torch.log(torch.diagonal(chol, 0, 1, 2) ** 2).sum(-1)
+            return -torch.log(torch.diagonal(chol, 0, 1, 2)).sum(-1)
 
     def get_parameters(self):
         return self.state_dict()
