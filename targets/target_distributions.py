@@ -59,7 +59,7 @@ class Target:
         self.choices = ["Test","Sharp Edges","Sharp Edges2","Hollow Circle","Orbits","Test Gaussian Dimension 1","Pyramid Dimension 1", "Test Gaussian Dimension 3", "Two circles", "Moons", "S Curve",
                         "Multimodal Example Dimension 2", "Unormalized Dimension 1", "Normalized Dimension 1",
                         "Multimodal Dimension 1","Bimodal Dimension 1", "Problematic case",
-                        "Multimodal Dimension 2","Multimodal Dimension 4","Multimodal Dimension 8","Multimodal Dimension 16","Multimodal Dimension 32","Multimodal Dimension 64","Multimodal Dimension 128","Blob Dimension 64", "Blob Dimension 128"]
+                        "Multimodal Dimension 2","Multimodal Dimension 4","Multimodal Dimension 8","Multimodal Dimension 16","Multimodal Dimension 32","Multimodal Dimension 64","Multimodal Uniform Dimension 64","Multimodal Dimension 128","Blob Dimension 64", "Blob Dimension 128"]
         self.choice = choice
         assert self.choice in self.choices, "'" + choice + "'" + ' not implemented, please select from ' + str(
             self.choices)
@@ -327,6 +327,20 @@ class Target:
             mvn_target = MultivariateNormal(means_target, covs_target)
             cat = Categorical(torch.exp(weights_target) / torch.sum(torch.exp(weights_target)))
             mix_target = MixtureSameFamily(cat, mvn_target)
+            self.target_samples = mix_target.sample([num_samples])
+            self.target_log_density = lambda samples: mix_target.log_prob(samples)
+
+        if choice == "Multimodal Uniform Dimension 64":
+            self.p = 64
+            mixtures_target = 4 + 2*torch.randint(0,6,[1])
+            print(mixtures_target)
+            mixture_components = []
+            for mixture in range(mixtures_target):
+                mixture_components.append(Uniform(torch.randint(-20,0, size = [self.p]),torch.randint(0,20, size = [self.p])))
+
+            weights_target = torch.randn(mixtures_target)
+            weights_target = torch.exp(weights_target)/torch.sum(torch.exp(weights_target))
+            mix_target = Mixture(mixture_components, weights_target)
             self.target_samples = mix_target.sample([num_samples])
             self.target_log_density = lambda samples: mix_target.log_prob(samples)
 

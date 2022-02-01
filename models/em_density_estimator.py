@@ -15,13 +15,13 @@ import seaborn as sns
 import pandas as pd
 
 class EMDensityEstimator(nn.Module):
-    def __init__(self,target_samples,K, initial_reference = None, initial_log_b = None, initial_T = None):
+    def __init__(self,target_samples,K, initial_reference = None, initial_log_b = None, initial_T = None, mode ='diag'):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.device = torch.device('cpu')
         self.target_samples = target_samples.to(self.device)
         self.p = self.target_samples.shape[-1]
         self.K = K
+        self.mode = mode
 
         if initial_reference == None:
             self.reference = MultivariateNormalReference(self.p)
@@ -29,22 +29,25 @@ class EMDensityEstimator(nn.Module):
             self.reference = initial_reference
 
         if initial_log_b == None:
-            self.pi= nn.Parameter(torch.log(torch.ones([self.K])/self.K))
+            self.log_pi= nn.Parameter(torch.log(torch.ones([self.K])/self.K))
         else:
             self.log_b = initial_log_b
 
         if initial_T == None:
-            initial_log_s = torch.zeros(self.K, self.p).to(self.device)
             initial_m = self.target_samples[torch.randint(low= 0, high = self.target_samples.shape[0],size = [self.K])].to(self.device)
-            self.T = LocationScaleFlow(self.K, self.p, initial_m = initial_m, initial_log_s = initial_log_s)
+            if self.mode == 'diag':
+                initial_log_s = torch.zeros(self.K, self.p).to(self.device)
+            elif self.mode =='full_rank':
+                initial_log_s = torch.ones(self.K, self.p,self.p).to(self.device)
+            self.T = LocationScaleFlow(self.K, self.p, initial_m = initial_m, initial_log_s = initial_log_s, mode = mode)
         else:
             self.T = initial_T
         self.to(self.device)
 
     def compute_log_v(self,x):
         z = self.T.forward(x)
-        log_v = self.reference.log_density(z) + self.pi.unsqueeze(0).repeat(x.shape[0],1)+ self.T.log_det_J(x)
-        return log_v - torch.logsumexp(log_v, dim = -1, keepdim= True)
+        unormalized_log_v = self.reference.log_density(z) + self.log_pi.unsqueeze(0).repeat(x.shape[0],1)+ self.T.log_det_J(x)
+        return unormalized_log_v - torch.logsumexp(unormalized_log_v, dim = -1, keepdim= True)
 
     def sample_latent(self,x):
         z = self.T.forward(x)
@@ -53,25 +56,31 @@ class EMDensityEstimator(nn.Module):
 
     def log_density(self, x):
         z = self.T.forward(x)
-        return torch.logsumexp(self.reference.log_density(z) + self.pi.unsqueeze(0).repeat(x.shape[0],1) + self.T.log_det_J(x),dim=-1)
+        return torch.logsumexp(self.reference.log_density(z) + self.log_pi.unsqueeze(0).repeat(x.shape[0],1) + self.T.log_det_J(x),dim=-1)
 
     def sample_model(self, num_samples):
         z = self.reference.sample(num_samples)
         x = self.T.backward(z)
-        pick = Categorical(torch.exp(self.pi.unsqueeze(0).repeat(x.shape[0],1))).sample()
+        pick = Categorical(torch.exp(self.log_pi.unsqueeze(0).repeat(x.shape[0],1))).sample()
         return torch.stack([x[i,pick[i],:] for i in range(z.shape[0])])
 
     def M_step(self, batch):
         v = torch.exp(self.compute_log_v(batch))
         c = torch.sum(v, dim=0)
-        self.pi = nn.Parameter(torch.log(c/torch.sum(c)))
+        self.log_pi = nn.Parameter(torch.log(c) - torch.logsumexp(torch.log(c), dim = 0))
         self.T.m = nn.Parameter(torch.sum(v.unsqueeze(-1).repeat(1, 1, self.p) * batch.unsqueeze(-2).repeat(1, self.K, 1),
                                 dim=0) / c.unsqueeze(-1))
-        self.T.log_s = nn.Parameter((1/2)*torch.log(torch.sum(v.unsqueeze(-1).repeat(1, 1, self.p) * (
+        if self.mode == 'diag':
+            self.T.log_s = nn.Parameter((1/2)*torch.log(torch.sum(v.unsqueeze(-1).repeat(1, 1, self.p) * (
                         batch.unsqueeze(-2).repeat(1, self.K, 1) - self.T.m.unsqueeze(0).repeat(batch.shape[0], 1,
                                                                                                1)) ** 2,
                                 dim=0) / c.unsqueeze(-1)))
-
+        elif self.mode == 'full_rank':
+            temp = (batch.unsqueeze(1).repeat(1,self.K, 1) - self.T.m.unsqueeze(0).repeat(batch.shape[0],1,1)).unsqueeze(-1)
+            print(temp.shape)
+            temp2 = temp@torch.transpose(temp, -2,-1)
+            self.T.chol= nn.Parameter(torch.cholesky(torch.sum(v.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, self.p, self.p) * temp2,
+                                                                      dim=0)/ c.unsqueeze(-1).unsqueeze(-1)))
     def train(self, epochs, visual = False):
         iteration_loss = -torch.mean(self.log_density(self.target_samples)).detach().item()
         loss_values = [iteration_loss]
@@ -91,6 +100,7 @@ class EMDensityEstimator(nn.Module):
         self.load_state_dict(best_parameters)
         if visual:
             self.train_visual(best_loss, best_iteration, loss_values)
+        print(torch.sum(torch.exp(self.log_pi)))
         return loss_values
 
     def train_visual(self, best_loss, best_iteration, loss_values):
