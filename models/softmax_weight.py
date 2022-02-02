@@ -5,7 +5,7 @@ class SoftmaxWeight(nn.Module):
     def __init__(self, K, p, hidden_dimensions =[], mode = 'NN'):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.device =torch.device('cpu')
+        self.device = torch.device('cpu')
         self.K = K
         self.p = p
         self.mode = mode

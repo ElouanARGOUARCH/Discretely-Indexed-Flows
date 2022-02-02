@@ -72,13 +72,11 @@ class EMDensityEstimator(nn.Module):
         self.T.m = nn.Parameter(torch.sum(v.unsqueeze(-1).repeat(1, 1, self.p) * batch.unsqueeze(-2).repeat(1, self.K, 1),
                                 dim=0) / c.unsqueeze(-1))
         if self.mode == 'diag':
-            self.T.log_s = nn.Parameter((1/2)*torch.log(torch.sum(v.unsqueeze(-1).repeat(1, 1, self.p) * (
-                        batch.unsqueeze(-2).repeat(1, self.K, 1) - self.T.m.unsqueeze(0).repeat(batch.shape[0], 1,
-                                                                                               1)) ** 2,
-                                dim=0) / c.unsqueeze(-1)))
+            temp = batch.unsqueeze(-2).repeat(1, self.K, 1) - self.T.m.unsqueeze(0).repeat(batch.shape[0], 1,1)
+            temp2 = temp**2
+            self.T.log_s = nn.Parameter((1/2)*torch.log(torch.sum(v.unsqueeze(-1).repeat(1, 1, self.p) * temp2,dim=0) / c.unsqueeze(-1)))
         elif self.mode == 'full_rank':
             temp = (batch.unsqueeze(1).repeat(1,self.K, 1) - self.T.m.unsqueeze(0).repeat(batch.shape[0],1,1)).unsqueeze(-1)
-            print(temp.shape)
             temp2 = temp@torch.transpose(temp, -2,-1)
             self.T.chol= nn.Parameter(torch.cholesky(torch.sum(v.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, self.p, self.p) * temp2,
                                                                       dim=0)/ c.unsqueeze(-1).unsqueeze(-1)))
@@ -101,7 +99,6 @@ class EMDensityEstimator(nn.Module):
         self.load_state_dict(best_parameters)
         if visual:
             self.train_visual(best_loss, best_iteration, loss_values)
-        print(torch.sum(torch.exp(self.log_pi)))
         return loss_values
 
     def train_visual(self, best_loss, best_iteration, loss_values):
@@ -182,6 +179,7 @@ class EMDensityEstimator(nn.Module):
             df_target['label']= 'Data'
             df_model = pd.DataFrame(model_samples.cpu().numpy())
             df_model['label'] = 'Model'
+            df_x = pd.concat([df_target, df_model])
 
             df_reference = pd.DataFrame(reference_samples.cpu().numpy())
             df_reference['label'] = 'Reference'

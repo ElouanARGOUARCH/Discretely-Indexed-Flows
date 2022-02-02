@@ -5,7 +5,7 @@ class LocationScaleFlow(nn.Module):
     def __init__(self, K, p, initial_m = None, initial_log_s = None, fixed_m = None, fixed_log_s = None, mode = 'diag'):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.device =torch.device('cpu')
+        self.device = torch.device('cpu')
         self.K = K
         self.mode = mode
         self.p = p
@@ -31,7 +31,7 @@ class LocationScaleFlow(nn.Module):
             elif initial_log_s != None and fixed_log_s != None:
                 raise ValueError("Both initial and final values were specified")
         elif self.mode == 'full_rank':
-            self.chol = torch.eye(self.p).unsqueeze(0).repeat(self.K, 1, 1)
+            self.chol = nn.Parameter(torch.eye(self.p).unsqueeze(0).repeat(self.K, 1, 1))
         self.to(self.device)
 
     def backward(self, z):

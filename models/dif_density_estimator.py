@@ -16,7 +16,7 @@ import seaborn as sns
 import pandas as pd
 
 class DIFDensityEstimator(nn.Module):
-    def __init__(self,target_samples,K, initial_reference = None, initial_w = None, initial_T = None, estimate_reference = True):
+    def __init__(self,target_samples,K, initial_reference = None, initial_w = None, initial_T = None, estimate_reference = False):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.device = torch.device('cpu')
