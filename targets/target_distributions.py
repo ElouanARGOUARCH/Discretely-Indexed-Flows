@@ -56,13 +56,19 @@ class Mixture:
 
 class Target:
     def __init__(self, choice, num_samples):
-        self.choices = ["Test","Sharp Edges","Sharp Edges2","Hollow Circle","Orbits","Test Gaussian Dimension 1","Pyramid Dimension 1", "Test Gaussian Dimension 3", "Two circles", "Moons", "S Curve",
+        self.choices = ["Uniform","Test","Sharp Edges","Sharp Edges2","Hollow Circle","Orbits","Test Gaussian Dimension 1","Pyramid Dimension 1", "Test Gaussian Dimension 3", "Two circles", "Moons", "S Curve",
                         "Multimodal Example Dimension 2", "Unormalized Dimension 1", "Normalized Dimension 1",
                         "Multimodal Dimension 1","Bimodal Dimension 1", "Problematic case",
                         "Multimodal Dimension 2","Multimodal Dimension 4","Multimodal Dimension 8","Multimodal Dimension 16","Multimodal Dimension 32","Multimodal Dimension 64","Multimodal Uniform Dimension 64","Multimodal Dimension 128","Blob Dimension 64", "Blob Dimension 128"]
         self.choice = choice
         assert self.choice in self.choices, "'" + choice + "'" + ' not implemented, please select from ' + str(
             self.choices)
+
+        if choice == 'Uniform':
+            self.p = 1
+            target = Uniform(lower=torch.tensor([-1.]), upper=torch.tensor([1.]))
+            self.target_samples = target.sample([num_samples])
+            self.target_log_density = lambda samples: target.log_prob(samples)
 
         if choice == "Test Gaussian Dimension 1":
             self.p = 1
