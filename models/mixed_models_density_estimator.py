@@ -19,7 +19,6 @@ class RealNVPDensityEstimatorLayer(nn.Module):
 
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.device = torch.device('cpu')
         self.p = p
         net = []
         hs = [self.p] + hidden_dim + [2*self.p]
@@ -66,7 +65,6 @@ class DIFDensityEstimatorLayer(nn.Module):
     def __init__(self,p, K, q_log_density):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.device = torch.device('cpu')
         self.p = p
         self.K = K
 
@@ -99,7 +97,6 @@ class MixedModelDensityEstimator(nn.Module):
     def __init__(self, target_samples,structure, initial_reference=None, estimate_reference = False):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.device = torch.device('cpu')
         self.target_samples = target_samples.to(self.device)
         self.p = self.target_samples.shape[-1]
         self.structure = structure

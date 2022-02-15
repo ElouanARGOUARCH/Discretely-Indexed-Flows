@@ -6,7 +6,6 @@ class MultivariateNormalReference(nn.Module):
     def __init__(self, p):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.device = torch.device('cpu')
         self.p = p
         self.distribution = torch.distributions.MultivariateNormal(torch.zeros(self.p).to(self.device), torch.eye(self.p).to(self.device))
 

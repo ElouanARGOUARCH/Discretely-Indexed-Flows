@@ -11,4 +11,3 @@ from .softmax_weight import SoftmaxWeight
 from .multivariate_normal_reference import MultivariateNormalReference
 from .softmax_weight_over import SoftmaxWeightOver
 from .em_density_estimator import EMDensityEstimator
-from .pavage import PavageDIF
