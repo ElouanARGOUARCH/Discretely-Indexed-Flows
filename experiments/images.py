@@ -13,7 +13,6 @@ rgb = image.imread("euler.jpg")
 def rgb2gray(rgb):
     return np.dot(rgb[...,:3], [0.2989, 0.5870, 0.1140])
 grey = torch.tensor(rgb2gray(rgb))
-plt.imshow(grey)
 
 vector_density = grey.flatten()
 vector_density = vector_density/torch.sum(vector_density)
@@ -40,10 +39,8 @@ initial_w.f[-1].weight = nn.Parameter(torch.zeros(K, 10))
 initial_w.f[-1].bias = nn.Parameter(EM.log_pi)
 dif = DIFDensityEstimator(target_samples,K, initial_T= initial_T, initial_w = initial_w)
 loss_values = dif.train(epochs,batch_size,visual=True)
-dif.model_visual()
 
 delta = 300
 grid = torch.cartesian_prod(torch.linspace(-lignes/8, 1.125*lignes,2*lignes),torch.linspace(-colonnes/8, 1.125*colonnes, 2*colonnes))
 density = torch.exp(EM.log_density(grid)).reshape(2*lignes,2*colonnes).T.cpu().detach()
-fig = plt.figure(figsize =(10,10))
 plt.imsave('try.jpg',torch.flip(torch.flip(density.T,[0,1]),[0,1]))
