@@ -77,7 +77,7 @@ class EMDensityEstimator(nn.Module):
         elif self.mode == 'full_rank':
             temp = (batch.unsqueeze(1).repeat(1,self.K, 1) - self.T.m.unsqueeze(0).repeat(batch.shape[0],1,1)).unsqueeze(-1)
             temp2 = temp@torch.transpose(temp, -2,-1)
-            self.T.chol= nn.Parameter(torch.cholesky(torch.sum(v.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, self.p, self.p) * temp2,
+            self.T.chol= nn.Parameter(torch.linalg.cholesky(torch.sum(v.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, self.p, self.p) * temp2,
                                                                       dim=0)/ c.unsqueeze(-1).unsqueeze(-1)))
     def train(self, epochs, visual = False):
         iteration_loss = -torch.mean(self.log_density(self.target_samples)).detach().item()

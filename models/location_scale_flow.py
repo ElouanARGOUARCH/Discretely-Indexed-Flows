@@ -68,7 +68,7 @@ class LocationScaleFlow(nn.Module):
             return -self.log_s.sum(1)
         elif self.mode =='full_rank':
             S = self.chol @ self.chol.transpose(-1, -2)
-            chol = torch.cholesky(S)
+            chol = torch.linalg.cholesky(S)
             return -torch.log(torch.diagonal(chol, 0, 1, 2)).sum(-1)
 
     def get_parameters(self):
