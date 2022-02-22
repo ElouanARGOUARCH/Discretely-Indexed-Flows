@@ -19,6 +19,7 @@ class DIFDensityEstimator(nn.Module):
     def __init__(self,target_samples,K, initial_reference = None, initial_w = None, initial_T = None, estimate_reference = False):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cpu')
         self.target_samples = target_samples.to(self.device)
         self.p = self.target_samples.shape[-1]
         self.K = K
@@ -59,6 +60,7 @@ class DIFDensityEstimator(nn.Module):
 
     def log_density(self, x):
         z = self.T.forward(x)
+        print(self.T.L)
         return torch.logsumexp(self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z),0,-2,-1) + self.T.log_det_J(x),dim=-1)
 
     def sample_model(self, num_samples):

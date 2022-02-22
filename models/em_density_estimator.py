@@ -18,6 +18,7 @@ class EMDensityEstimator(nn.Module):
     def __init__(self,target_samples,K, initial_log_b = None, initial_T = None):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cpu')
         self.target_samples = target_samples.to(self.device)
         self.p = self.target_samples.shape[-1]
         self.K = K
@@ -31,7 +32,7 @@ class EMDensityEstimator(nn.Module):
 
         if initial_T == None:
             initial_m = self.target_samples[torch.randint(low= 0, high = self.target_samples.shape[0],size = [self.K])].to(self.device)
-            initial_log_s = torch.ones(self.K, self.p,self.p).to(self.device)
+            initial_log_s = torch.zeros(self.K, self.p,self.p).to(self.device)
             self.T = LocationScaleFlow(self.K, self.p, initial_m = initial_m, initial_log_s = initial_log_s, mode = 'full_rank')
         else:
             self.T = initial_T
@@ -65,8 +66,16 @@ class EMDensityEstimator(nn.Module):
                                 dim=0) / c.unsqueeze(-1))
         temp = (batch.unsqueeze(1).repeat(1,self.K, 1) - self.T.m.unsqueeze(0).repeat(batch.shape[0],1,1)).unsqueeze(-1)
         temp2 = temp@torch.transpose(temp, -2,-1)
-        self.T.chol= nn.Parameter(torch.linalg.cholesky(torch.sum(v.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, self.p, self.p) * temp2,
+        temp3= nn.Parameter(torch.linalg.cholesky(torch.sum(v.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, self.p, self.p) * temp2,
                                                                       dim=0)/ c.unsqueeze(-1).unsqueeze(-1)))
+        log_transformed = self.apply_log_diagonal(temp3)
+        self.T.L = nn.Parameter(log_transformed)
+
+    def apply_log_diagonal(self, tensor):
+        U = torch.ones(self.p, self.p) - torch.eye(self.p)
+        return tensor * U + ((tensor*torch.eye(self.p)) + U).log()
+
+
     def train(self, epochs, visual = False):
         iteration_loss = -torch.mean(self.log_density(self.target_samples)).detach().item()
         loss_values = [iteration_loss]
