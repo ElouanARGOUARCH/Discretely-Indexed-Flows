@@ -21,7 +21,7 @@ class LocationScaleFlow(nn.Module):
 
         if self.mode == 'diag':
             if initial_log_s == None and fixed_log_s == None:
-                self.log_s = nn.Parameter(torch.randn(self.K, self.p))
+                self.log_s = nn.Parameter(torch.zeros(self.K, self.p))
             elif initial_log_s != None and fixed_log_s == None:
                 self.log_s = nn.Parameter(initial_log_s)
             elif initial_log_s == None and fixed_log_s != None:
@@ -30,7 +30,15 @@ class LocationScaleFlow(nn.Module):
             elif initial_log_s != None and fixed_log_s != None:
                 raise ValueError("Both initial and final values were specified")
         elif self.mode == 'full_rank':
-            self.chol = nn.Parameter(torch.eye(self.p).unsqueeze(0).repeat(self.K, 1, 1))
+            if initial_log_s == None and fixed_log_s == None:
+                self.L = nn.Parameter(torch.eye(self.p).unsqueeze(0).repeat(self.K, 1, 1))
+            elif initial_log_s != None and fixed_log_s == None:
+                self.L = nn.Parameter(initial_log_s)
+            elif initial_log_s == None and fixed_log_s != None:
+                self.L = fixed_log_s.to(self.device)
+                self.L.requires_grad = False
+            elif initial_log_s != None and fixed_log_s != None:
+                raise ValueError("Both initial and final values were specified")
         self.to(self.device)
 
     def backward(self, z):
@@ -45,7 +53,7 @@ class LocationScaleFlow(nn.Module):
             desired_size_S = list(z.shape)
             desired_size_S.insert(-1, self.K)
             desired_size_S.insert(-1, self.p)
-            return ((self.chol.expand(desired_size_S)) @ (
+            return (self.L.expand(desired_size_S) @ (
                 z.unsqueeze(-2).expand(desired_size_Z_M).unsqueeze(-1))).squeeze(-1) + self.m.expand(desired_size_Z_M)
 
     def forward(self, x):
@@ -60,16 +68,14 @@ class LocationScaleFlow(nn.Module):
             desired_size_S = list(x.shape)
             desired_size_S.insert(-1, self.K)
             desired_size_S.insert(-1, self.p)
-            return ((torch.inverse(self.chol).expand(desired_size_S)) @ (
+            return (torch.linalg.inv(self.L).expand(desired_size_S) @ (
                 (x.unsqueeze(-2).expand(desired_size_X_M) - self.m.expand(desired_size_X_M)).unsqueeze(-1))).squeeze(-1)
 
     def log_det_J(self,x):
         if self.mode == 'diag':
-            return -self.log_s.sum(1)
+            return -self.log_s.sum(-1)
         elif self.mode =='full_rank':
-            S = self.chol @ self.chol.transpose(-1, -2)
-            chol = torch.linalg.cholesky(S)
-            return -torch.log(torch.diagonal(chol, 0, 1, 2)).sum(-1)
+            return -torch.log(torch.prod(torch.diagonal(self.L, 0, -2, -1), dim = -1))
 
     def get_parameters(self):
         return self.state_dict()
