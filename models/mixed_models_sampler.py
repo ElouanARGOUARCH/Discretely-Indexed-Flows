@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from matplotlib.ticker import MaxNLocator
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
-from models.multivariate_normal_reference import MultivariateNormalReference
+from models.generalized_multivariate_normal_reference import GeneralizedMultivariateNormalReference
 from models.location_scale_flow import LocationScaleFlow
 from models.softmax_weight import SoftmaxWeight
 from utils.color_visual import *
@@ -107,7 +107,7 @@ class MixedModelSampler(nn.Module):
         self.N = len(self.structure)
 
         if initial_reference == None:
-            self.reference = MultivariateNormalReference(self.p)
+            self.reference = GeneralizedMultivariateNormalReference(self.p, fixed_log_r= torch.log(torch.tensor([2.])))
         else:
             self.reference = initial_reference
 

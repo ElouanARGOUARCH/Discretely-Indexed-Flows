@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 from models.location_scale_flow import LocationScaleFlow
 from models.softmax_weight import SoftmaxWeight
-from models.multivariate_normal_reference import MultivariateNormalReference
+from models.generalized_multivariate_normal_reference import GeneralizedMultivariateNormalReference
 
 class DIFSampler(nn.Module):
     def __init__(self, target_log_density, p, K, initial_w=None, initial_T=None):

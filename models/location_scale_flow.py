@@ -5,7 +5,6 @@ class LocationScaleFlow(nn.Module):
     def __init__(self, K, p, initial_m = None, initial_log_s = None, fixed_m = None, fixed_log_s = None, mode = 'diag'):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.device = torch.device('cpu')
         self.K = K
         self.mode = mode
         self.p = p
@@ -32,7 +31,7 @@ class LocationScaleFlow(nn.Module):
                 raise ValueError("Both initial and final values were specified")
         elif self.mode == 'full_rank':
             if initial_log_s == None and fixed_log_s == None:
-                self.L = nn.Parameter(torch.zeros(self.K,self.p,self.p))
+                self.L = nn.Parameter(torch.eye(self.p).unsqueeze(0).repeat(self.K,1, 1).to(self.device))
             elif initial_log_s != None and fixed_log_s == None:
                 self.L = nn.Parameter(initial_log_s)
             elif initial_log_s == None and fixed_log_s != None:
@@ -57,7 +56,7 @@ class LocationScaleFlow(nn.Module):
             desired_size_S = list(z.shape)
             desired_size_S.insert(-1, self.K)
             desired_size_S.insert(-1, self.p)
-            return (self.apply_exp_diagonal(self.L).expand(desired_size_S) @ (
+            return (self.L.expand(desired_size_S) @ (
                 z.unsqueeze(-2).expand(desired_size_Z_M).unsqueeze(-1))).squeeze(-1) + self.m.expand(desired_size_Z_M)
 
     def forward(self, x):
@@ -72,14 +71,14 @@ class LocationScaleFlow(nn.Module):
             desired_size_S = list(x.shape)
             desired_size_S.insert(-1, self.K)
             desired_size_S.insert(-1, self.p)
-            return (torch.linalg.inv(self.apply_exp_diagonal(self.L)).expand(desired_size_S) @ (
+            return (torch.linalg.inv(self.L).expand(desired_size_S) @ (
                 (x.unsqueeze(-2).expand(desired_size_X_M) - self.m.expand(desired_size_X_M)).unsqueeze(-1))).squeeze(-1)
 
     def log_det_J(self,x):
         if self.mode == 'diag':
             return -self.log_s.sum(-1)
         elif self.mode =='full_rank':
-            return -torch.sum(torch.diagonal(self.L, 0, -2, -1), dim = -1)
+            return -torch.log(torch.linalg.det(self.L))
 
     def get_parameters(self):
         return self.state_dict()

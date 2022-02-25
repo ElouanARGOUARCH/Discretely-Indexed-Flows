@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 from models.location_scale_flow import LocationScaleFlow
 from models.softmax_weight import SoftmaxWeight
-from models.multivariate_normal_reference import MultivariateNormalReference
+from models.generalized_multivariate_normal_reference import GeneralizedMultivariateNormalReference
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,18 +16,15 @@ import seaborn as sns
 import pandas as pd
 
 class DIFDensityEstimator(nn.Module):
-    def __init__(self,target_samples,K, initial_reference = None, initial_w = None, initial_T = None, estimate_reference = False):
+    def __init__(self,target_samples,K, initial_reference = None, initial_w = None, initial_T = None):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.device = torch.device('cpu')
         self.target_samples = target_samples.to(self.device)
         self.p = self.target_samples.shape[-1]
         self.K = K
 
         if initial_reference == None:
-            self.reference = MultivariateNormalReference(self.p).to(self.device)
-            if estimate_reference:
-                self.reference.estimate_moments(self.target_samples)
+            self.reference = GeneralizedMultivariateNormalReference(self.p).to(self.device)
         else:
             self.reference = initial_reference
 
@@ -59,8 +56,8 @@ class DIFDensityEstimator(nn.Module):
         return torch.stack([z[i,pick[i],:] for i in range(x.shape[0])])
 
     def log_density(self, x):
+        x= x.to(self.device)
         z = self.T.forward(x)
-        print(self.T.L)
         return torch.logsumexp(self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z),0,-2,-1) + self.T.log_det_J(x),dim=-1)
 
     def sample_model(self, num_samples):

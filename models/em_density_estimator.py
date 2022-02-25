@@ -4,7 +4,7 @@ from tqdm import tqdm
 from torch import nn
 
 from models.location_scale_flow import LocationScaleFlow
-from models.multivariate_normal_reference import MultivariateNormalReference
+from models.generalized_multivariate_normal_reference import GeneralizedMultivariateNormalReference
 from models.softmax_weight import SoftmaxWeight
 
 import numpy as np
@@ -18,21 +18,20 @@ class EMDensityEstimator(nn.Module):
     def __init__(self,target_samples,K, initial_log_b = None, initial_T = None):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.device = torch.device('cpu')
         self.target_samples = target_samples.to(self.device)
         self.p = self.target_samples.shape[-1]
         self.K = K
 
-        self.reference = MultivariateNormalReference(self.p)
+        self.reference = GeneralizedMultivariateNormalReference(self.p, fixed_log_r= torch.log(2.*torch.ones(self.p)))
 
         if initial_log_b == None:
-            self.log_pi= nn.Parameter(torch.log(torch.ones([self.K])/self.K))
+            self.log_pi= nn.Parameter(torch.log(torch.ones([self.K])/self.K).to(self.device))
         else:
             self.log_b = initial_log_b
 
         if initial_T == None:
             initial_m = self.target_samples[torch.randint(low= 0, high = self.target_samples.shape[0],size = [self.K])].to(self.device)
-            initial_log_s = torch.zeros(self.K, self.p,self.p).to(self.device)
+            initial_log_s =torch.eye(self.p).unsqueeze(0).repeat(self.K,1, 1).to(self.device)
             self.T = LocationScaleFlow(self.K, self.p, initial_m = initial_m, initial_log_s = initial_log_s, mode = 'full_rank')
         else:
             self.T = initial_T
@@ -49,6 +48,7 @@ class EMDensityEstimator(nn.Module):
         return torch.stack([z[i,pick[i],:] for i in range(x.shape[0])])
 
     def log_density(self, x):
+        x = x.to(self.device)
         z = self.T.forward(x)
         return torch.logsumexp(self.reference.log_density(z) + self.log_pi.unsqueeze(0).repeat(x.shape[0],1) + self.T.log_det_J(x),dim=-1)
 
@@ -68,8 +68,8 @@ class EMDensityEstimator(nn.Module):
         temp2 = temp@torch.transpose(temp, -2,-1)
         temp3= nn.Parameter(torch.linalg.cholesky(torch.sum(v.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, self.p, self.p) * temp2,
                                                                       dim=0)/ c.unsqueeze(-1).unsqueeze(-1)))
-        log_transformed = self.apply_log_diagonal(temp3)
-        self.T.L = nn.Parameter(log_transformed)
+        #log_transformed = self.apply_log_diagonal(temp3)
+        self.T.L = nn.Parameter(temp3)
 
     def apply_log_diagonal(self, tensor):
         U = torch.ones(self.p, self.p) - torch.eye(self.p)

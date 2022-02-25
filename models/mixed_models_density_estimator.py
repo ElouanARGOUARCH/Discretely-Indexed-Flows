@@ -9,7 +9,7 @@ from torch.distributions import Categorical
 from tqdm import tqdm
 
 from models.location_scale_flow import LocationScaleFlow
-from models.multivariate_normal_reference import MultivariateNormalReference
+from models.generalized_multivariate_normal_reference import GeneralizedMultivariateNormalReference
 from models.softmax_weight import SoftmaxWeight
 from utils.color_visual import *
 
@@ -103,7 +103,7 @@ class MixedModelDensityEstimator(nn.Module):
         self.N = len(self.structure)
 
         if initial_reference == None:
-            self.reference = MultivariateNormalReference(self.p)
+            self.reference = GeneralizedMultivariateNormalReference(self.p)
             if estimate_reference:
                 self.reference.estimate_moments(self.target_samples)
         else:

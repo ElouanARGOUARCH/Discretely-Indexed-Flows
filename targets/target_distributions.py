@@ -79,9 +79,9 @@ class Target:
         if choice == "Sharp Edges":
             self.p = 1
             temp = torch.distributions.laplace.Laplace(torch.tensor([0.]),torch.tensor([2]))
-            uniform = Uniform(torch.tensor([-2.0]), torch.tensor([2.0]))
-            uniform2 = Uniform(torch.tensor([-4.0]), torch.tensor([4.0]))
-            target = Mixture([uniform,uniform2, temp], torch.tensor([1.,2., 1.]))
+            uniform = Uniform(torch.tensor([-3]), torch.tensor([3]))
+            uniform2 = Uniform(torch.tensor([-5.0]), torch.tensor([5.0]))
+            target = Mixture([uniform,uniform2, temp], torch.tensor([1.,1., 1.]))
             self.target_log_density = lambda samples: target.log_prob(samples)
             self.target_samples = target.sample([num_samples])
 
