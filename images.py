@@ -28,7 +28,7 @@ categorical_samples = cat.sample([num_samples])
 target_samples = torch.cat([(categorical_samples//colonnes).unsqueeze(-1), (categorical_samples%colonnes).unsqueeze(-1)], dim = -1) + torch.rand([num_samples,2])
 
 #Run EM
-epochs = 200
+epochs = 2
 K = 49
 initial_m = torch.cartesian_prod(torch.linspace(0, lignes,7),torch.linspace(0, colonnes, 7))
 initial_L = torch.eye(2).unsqueeze(0).repeat(K, 1, 1)
@@ -37,7 +37,7 @@ EM = EMDensityEstimator(target_samples,K, initial_T = initial_T)
 loss_values = EM.train(epochs,visual=True)
 
 #Run DIF with initialization EM
-epochs = 10000
+epochs = 10
 batch_size = 20000
 initial_T = EM.T
 initial_w = SoftmaxWeight(K, 2, [126,126,126], mode = 'NN')
