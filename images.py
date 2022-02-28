@@ -28,8 +28,8 @@ target_samples = torch.cat([(categorical_samples//colonnes).unsqueeze(-1), (cate
 
 #Run EM
 epochs = 50
-K = 25
-initial_m = torch.cartesian_prod(torch.linspace(0, lignes,6),torch.linspace(0, colonnes, 6))
+K = 49
+initial_m = torch.cartesian_prod(torch.linspace(0, lignes,7),torch.linspace(0, colonnes, 7))
 initial_L = torch.eye(2).unsqueeze(0).repeat(K, 1, 1)
 initial_T = LocationScaleFlow(K, 2, initial_m = initial_m,initial_log_s= initial_L, mode = 'full_rank')
 EM = EMDensityEstimator(target_samples,K, initial_T = initial_T)
