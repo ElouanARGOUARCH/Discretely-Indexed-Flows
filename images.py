@@ -4,9 +4,6 @@ import numpy as np
 import torch
 from torch import nn
 import pickle
-import sys
-sys.path.insert(0, '')
-from models import *
 
 from models import LocationScaleFlow
 from models import EMDensityEstimator
@@ -31,8 +28,8 @@ target_samples = torch.cat([(categorical_samples//colonnes).unsqueeze(-1), (cate
 
 #Run EM
 epochs = 50
-K = 100
-initial_m = torch.cartesian_prod(torch.linspace(0, lignes,10),torch.linspace(0, colonnes, 10))
+K = 25
+initial_m = torch.cartesian_prod(torch.linspace(0, lignes,6),torch.linspace(0, colonnes, 6))
 initial_L = torch.eye(2).unsqueeze(0).repeat(K, 1, 1)
 initial_T = LocationScaleFlow(K, 2, initial_m = initial_m,initial_log_s= initial_L, mode = 'full_rank')
 EM = EMDensityEstimator(target_samples,K, initial_T = initial_T)
@@ -52,7 +49,7 @@ loss_values = dif.train(epochs,batch_size,visual=True)
 #Save Image
 delta = 500
 grid = torch.cartesian_prod(torch.linspace(-lignes/8, 1.125*lignes,delta),torch.linspace(-colonnes/8, 1.125*colonnes, delta))
-density = torch.exp(EM.log_density(grid)).reshape(delta,delta).T.cpu().detach()
+density = torch.exp(dif.log_density(grid)).reshape(delta,delta).T.cpu().detach()
 plt.imsave('try.jpg',torch.flip(torch.flip(density.T,[0,1]),[0,1]))
 
 #Save model
