@@ -28,8 +28,8 @@ target_samples = torch.cat([(categorical_samples//colonnes).unsqueeze(-1), (cate
 
 #Run EM
 epochs = 50
-K = 36
-initial_m = torch.cartesian_prod(torch.linspace(0, lignes,6),torch.linspace(0, colonnes, 6))
+K = 100
+initial_m = torch.cartesian_prod(torch.linspace(0, lignes,10),torch.linspace(0, colonnes, 10))
 initial_L = torch.eye(2).unsqueeze(0).repeat(K, 1, 1)
 initial_T = LocationScaleFlow(K, 2, initial_m = initial_m,initial_log_s= initial_L, mode = 'full_rank')
 EM = EMDensityEstimator(target_samples,K, initial_T = initial_T)
@@ -37,7 +37,7 @@ loss_values = EM.train(epochs,visual=True)
 
 #Run DIF with initialization EM
 epochs = 10000
-batch_size = 50000
+batch_size = 20000
 initial_T = EM.T
 initial_w = SoftmaxWeight(K, 2, [128,128,128], mode = 'NN')
 initial_w.f[-1].weight = nn.Parameter(torch.zeros(K, 128))
@@ -53,5 +53,5 @@ density = torch.exp(EM.log_density(grid)).reshape(delta,delta).T.cpu().detach()
 plt.imsave('try.jpg',torch.flip(torch.flip(density.T,[0,1]),[0,1]))
 
 #Save model
-filename = 'euler.sav'
+filename = 'euler_dif.sav'
 pickle.dump(dif,open(filename,'wb'))
