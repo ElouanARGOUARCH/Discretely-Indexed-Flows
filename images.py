@@ -48,7 +48,7 @@ dif = DIFDensityEstimator(target_samples,K, initial_T= initial_T, initial_w = in
 loss_values = dif.train(epochs,batch_size,visual=True)
 
 #Save Image
-delta = 500
+delta = 200
 grid = torch.cartesian_prod(torch.linspace(-lignes/8, 1.125*lignes,delta),torch.linspace(-colonnes/8, 1.125*colonnes, delta))
 density = torch.exp(dif.log_density(grid)).reshape(delta,delta).T.cpu().detach()
 plt.imsave('try.jpg',torch.flip(torch.flip(density.T,[0,1]),[0,1]))
