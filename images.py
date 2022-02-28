@@ -4,6 +4,9 @@ import numpy as np
 import torch
 from torch import nn
 import pickle
+import sys
+sys.path.insert(0, '')
+from models import *
 
 from models import LocationScaleFlow
 from models import EMDensityEstimator
