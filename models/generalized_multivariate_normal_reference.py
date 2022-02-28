@@ -11,7 +11,6 @@ class GeneralizedMultivariateNormalReference(nn.Module):
         super().__init__()
 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.device = torch.device('cpu')
 
         self.p = p
         if initial_log_r == None and fixed_log_r == None:

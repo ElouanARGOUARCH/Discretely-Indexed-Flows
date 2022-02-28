@@ -5,7 +5,6 @@ from torch import nn
 
 from models.location_scale_flow import LocationScaleFlow
 from models.generalized_multivariate_normal_reference import GeneralizedMultivariateNormalReference
-from models.softmax_weight import SoftmaxWeight
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -18,7 +17,6 @@ class EMDensityEstimator(nn.Module):
     def __init__(self,target_samples,K, initial_log_b = None, initial_T = None):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.device = torch.device('cpu')
         self.target_samples = target_samples.to(self.device)
         self.p = self.target_samples.shape[-1]
         self.K = K
