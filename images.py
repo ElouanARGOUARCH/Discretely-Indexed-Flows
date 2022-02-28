@@ -39,8 +39,8 @@ loss_values = EM.train(epochs,visual=True)
 epochs = 10000
 batch_size = 20000
 initial_T = EM.T
-initial_w = SoftmaxWeight(K, 2, [256,256,256], mode = 'NN')
-initial_w.f[-1].weight = nn.Parameter(torch.zeros(K, 256))
+initial_w = SoftmaxWeight(K, 2, [200,200,200], mode = 'NN')
+initial_w.f[-1].weight = nn.Parameter(torch.zeros(K, 200))
 initial_w.f[-1].bias = nn.Parameter(EM.log_pi)
 initial_reference = GeneralizedMultivariateNormalReference(2, initial_log_r = torch.log(2.*torch.ones(2)))
 dif = DIFDensityEstimator(target_samples,K, initial_T= initial_T, initial_w = initial_w, initial_reference = initial_reference)
