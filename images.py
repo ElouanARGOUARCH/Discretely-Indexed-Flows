@@ -28,19 +28,19 @@ target_samples = torch.cat([(categorical_samples//colonnes).unsqueeze(-1), (cate
 
 #Run EM
 epochs = 100
-K = 36
-initial_m = torch.cartesian_prod(torch.linspace(0, lignes,6),torch.linspace(0, colonnes, 6))
+K = 49
+initial_m = torch.cartesian_prod(torch.linspace(0, lignes,7),torch.linspace(0, colonnes, 7))
 initial_L = torch.eye(2).unsqueeze(0).repeat(K, 1, 1)
 initial_T = LocationScaleFlow(K, 2, initial_m = initial_m,initial_log_s= initial_L, mode = 'full_rank')
 EM = EMDensityEstimator(target_samples,K, initial_T = initial_T)
 loss_values = EM.train(epochs,visual=True)
 
 #Run DIF with initialization EM
-epochs = 1000
-batch_size = 50000
+epochs = 10000
+batch_size = 20000
 initial_T = EM.T
-initial_w = SoftmaxWeight(K, 2, [100,100,100], mode = 'NN')
-initial_w.f[-1].weight = nn.Parameter(torch.zeros(K, 100))
+initial_w = SoftmaxWeight(K, 2, [128,128,128], mode = 'NN')
+initial_w.f[-1].weight = nn.Parameter(torch.zeros(K, 128))
 initial_w.f[-1].bias = nn.Parameter(EM.log_pi)
 initial_reference = GeneralizedMultivariateNormalReference(2, initial_log_r = torch.log(2.*torch.ones(2)))
 dif = DIFDensityEstimator(target_samples,K, initial_T= initial_T, initial_w = initial_w, initial_reference = initial_reference)
