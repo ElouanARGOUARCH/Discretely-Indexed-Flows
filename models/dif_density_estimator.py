@@ -45,6 +45,17 @@ class DIFDensityEstimator(nn.Module):
 
         self.to(self.device)
 
+    def to_cpu(self):
+        cpu = torch.device('cpu')
+        self.to(cpu)
+        self.device = cpu
+        self.reference.to(cpu)
+        self.reference.device = cpu
+        self.T.to(cpu)
+        self.T.device = cpu
+        self.w.to(cpu)
+        self.w.device = cpu
+
     def compute_log_v(self,x):
         z = self.T.forward(x)
         log_v = self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.T.log_det_J(x)
@@ -92,8 +103,9 @@ class DIFDensityEstimator(nn.Module):
         self.to(self.device)
         if batch_size is None:
             batch_size = self.target_samples.shape[0]
-        perm = torch.randperm(self.target_samples.shape[0])
-        loss_values = [torch.tensor([self.loss(self.target_samples[perm][i*batch_size:min((i+1)*batch_size, self.target_samples.shape[0])]) for i in range(int(self.target_samples.shape[0]/batch_size))]).mean().item()]
+        with torch.no_grad():
+            perm = torch.randperm(self.target_samples.shape[0])
+            loss_values = [torch.tensor([self.loss(self.target_samples[perm][i*batch_size:min((i+1)*batch_size, self.target_samples.shape[0])]) for i in range(int(self.target_samples.shape[0]/batch_size))]).mean().item()]
         best_loss = loss_values[0]
         best_iteration = 0
         best_parameters = self.state_dict()
@@ -105,9 +117,8 @@ class DIFDensityEstimator(nn.Module):
                 batch_loss = self.loss(self.target_samples[perm][i * batch_size:min((i + 1) * batch_size, self.target_samples.shape[0])], mode = mode)
                 batch_loss.backward()
                 self.optimizer.step()
-
-            iteration_loss = torch.tensor([self.loss(self.target_samples[perm][i * batch_size:min((i + 1) * batch_size, self.target_samples.shape[0])]) for i
-                                           in range(int(self.target_samples.shape[0] / batch_size))]).mean().item()
+            with torch.no_grad():
+                iteration_loss = torch.tensor([self.loss(self.target_samples[perm][i*batch_size:min((i+1)*batch_size, self.target_samples.shape[0])]) for i in range(int(self.target_samples.shape[0]/batch_size))]).mean().item()
             pbar.set_postfix_str('loss = ' + str(iteration_loss))
             loss_values.append(iteration_loss)
             if iteration_loss < best_loss:
