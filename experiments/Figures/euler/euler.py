@@ -45,7 +45,7 @@ initial_m = torch.cartesian_prod(torch.linspace(0, lignes,7),torch.linspace(0, c
 initial_L = torch.eye(2).unsqueeze(0).repeat(K, 1, 1)
 initial_T = LocationScaleFlow(K, 2, initial_m = initial_m,initial_log_s= initial_L, mode = 'full_rank')
 EM = EMDensityEstimator(target_samples,K, initial_T = initial_T)
-loss_values = EM.train(epochs,visual=True)
+loss_values = EM.train(epochs)
 
 #Save em
 filename = './experiments/Figures/euler/euler_em.sav'
@@ -60,7 +60,7 @@ initial_w.f[-1].weight = nn.Parameter(torch.zeros(K, 64))
 initial_w.f[-1].bias = nn.Parameter(EM.log_pi)
 initial_reference = GeneralizedMultivariateNormalReference(2, initial_log_r = torch.log(2.*torch.ones(2)))
 dif = DIFDensityEstimator(target_samples,K, initial_T= initial_T, initial_w = initial_w, initial_reference = initial_reference)
-loss_values = dif.train(epochs,batch_size,visual=True)
+loss_values = dif.train(epochs,batch_size)
 
 #Save dif
 filename = './experiments/Figures/euler/euler_dif.sav'
