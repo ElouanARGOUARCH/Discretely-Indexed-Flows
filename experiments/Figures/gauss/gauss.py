@@ -22,7 +22,7 @@ grey = torch.tensor(rgb2gray(rgb))
 vector_density = grey.flatten()
 vector_density = vector_density/torch.sum(vector_density)
 lignes, colonnes = grey.shape
-num_samples = 100000
+num_samples = 200000
 cat = torch.distributions.Categorical(probs = vector_density)
 categorical_samples = cat.sample([num_samples])
 target_samples = torch.cat([(categorical_samples//colonnes).unsqueeze(-1), (categorical_samples%colonnes).unsqueeze(-1)], dim = -1) + torch.rand([num_samples,2])
