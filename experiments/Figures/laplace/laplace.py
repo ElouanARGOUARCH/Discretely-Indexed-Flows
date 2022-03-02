@@ -13,7 +13,7 @@ from models import GeneralizedMultivariateNormalReference
 
 torch.manual_seed(0)
 #Load target image
-rgb = image.imread("laplace.jpg")
+rgb = image.imread("experiments\Figure\laplace\laplace.jpg")
 def rgb2gray(rgb):
     return np.dot(rgb[...,:3], [0.2989, 0.5870, 0.1140])
 grey = torch.tensor(rgb2gray(rgb))
