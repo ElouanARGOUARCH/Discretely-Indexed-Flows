@@ -76,8 +76,31 @@ class EMDensityEstimator(nn.Module):
         U = torch.ones(self.p, self.p) - torch.eye(self.p)
         return tensor * U + ((tensor*torch.eye(self.p)) + U).log()
 
+    def to_cpu(self):
+        cpu = torch.device('cpu')
+        self.to(cpu)
+        self.device = cpu
+        self.reference.to(cpu)
+        self.reference.device = cpu
+        self.T.to(cpu)
+        self.T.device = cpu
+        self.w.to(cpu)
+        self.w.device = cpu
+
+    def to_gpu(self):
+        gpu = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.to(gpu)
+        self.device = gpu
+        self.reference.to(gpu)
+        self.reference.device = gpu
+        self.T.to(gpu)
+        self.T.device = gpu
+        self.w.to(gpu)
+        self.w.device = gpu
+
 
     def train(self, epochs, visual = False):
+        self.to_gpu()
         iteration_loss = -torch.mean(self.log_density(self.target_samples)).detach().item()
         loss_values = [iteration_loss]
         best_loss = loss_values[0]
@@ -96,6 +119,7 @@ class EMDensityEstimator(nn.Module):
         self.load_state_dict(best_parameters)
         if visual:
             self.train_visual(best_loss, best_iteration, loss_values)
+        self.to_cpu()
         return loss_values
 
     def train_visual(self, best_loss, best_iteration, loss_values):

@@ -105,15 +105,10 @@ class DIFDensityEstimator(nn.Module):
             log_joint = self.reference.log_density(z) + self.T.log_det_J(batch) - log_v + torch.diagonal(unormalized_log_w, 0, -2, -1) - torch.logsumexp(unormalized_log_w, dim=-1).detach() - (torch.sum(torch.exp(unormalized_log_w), dim = -1) -torch.sum(torch.exp(unormalized_log_w), dim = -1).detach()) /(torch.sum(torch.exp(unormalized_log_w), dim = -1).detach())
             return - torch.sum(torch.exp(log_v) * log_joint, dim = -1).mean()
 
-    def compare_loss(self):
-        loss0 = self.loss(self.target_samples, mode = 'SGD')
-        loss1 = self.loss(self.target_samples, mode='GradientEM')
-        loss2 = self.loss(self.target_samples, mode='GradientEM2')
-        return loss0, loss1, loss2
-
 
     def train(self, epochs, batch_size = None, visual = False, mode = 'SGD'):
         self.to(self.device)
+        self.to_gpu()
         if batch_size is None:
             batch_size = self.target_samples.shape[0]
         with torch.no_grad():
@@ -142,6 +137,7 @@ class DIFDensityEstimator(nn.Module):
         self.load_state_dict(best_parameters)
         if visual:
             self.train_visual(best_loss, best_iteration, loss_values)
+        self.to_cpu()
         return loss_values
 
     def train_visual(self, best_loss, best_iteration, loss_values):
