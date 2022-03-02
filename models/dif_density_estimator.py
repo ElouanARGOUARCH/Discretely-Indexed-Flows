@@ -56,6 +56,17 @@ class DIFDensityEstimator(nn.Module):
         self.w.to(cpu)
         self.w.device = cpu
 
+    def to_gpu(self):
+        gpu = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.to(gpu)
+        self.device = gpu
+        self.reference.to(gpu)
+        self.reference.device = gpu
+        self.T.to(gpu)
+        self.T.device = gpu
+        self.w.to(gpu)
+        self.w.device = gpu
+
     def compute_log_v(self,x):
         z = self.T.forward(x)
         log_v = self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.T.log_det_J(x)

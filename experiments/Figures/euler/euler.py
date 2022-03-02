@@ -27,6 +27,10 @@ cat = torch.distributions.Categorical(probs = vector_density)
 categorical_samples = cat.sample([num_samples])
 target_samples = torch.cat([(categorical_samples//colonnes).unsqueeze(-1), (categorical_samples%colonnes).unsqueeze(-1)], dim = -1) + torch.rand([num_samples,2])
 
+#Save target sampels
+filename = 'euler_samples.sav'
+pickle.dump(target_samples,open(filename,'wb'))
+
 #Run EM
 epochs = 200
 K = 49
@@ -36,23 +40,21 @@ initial_T = LocationScaleFlow(K, 2, initial_m = initial_m,initial_log_s= initial
 EM = EMDensityEstimator(target_samples,K, initial_T = initial_T)
 loss_values = EM.train(epochs,visual=True)
 
+#Save em
+filename = 'euler_em.sav'
+pickle.dump(EM,open(filename,'wb'))
+
 #Run DIF with initialization EM
 epochs = 10000
 batch_size = 20000
 initial_T = EM.T
-initial_w = SoftmaxWeight(K, 2, [126,126,126], mode = 'NN')
-initial_w.f[-1].weight = nn.Parameter(torch.zeros(K, 126))
+initial_w = SoftmaxWeight(K, 2, [64,64,64], mode = 'NN')
+initial_w.f[-1].weight = nn.Parameter(torch.zeros(K, 64))
 initial_w.f[-1].bias = nn.Parameter(EM.log_pi)
 initial_reference = GeneralizedMultivariateNormalReference(2, initial_log_r = torch.log(2.*torch.ones(2)))
 dif = DIFDensityEstimator(target_samples,K, initial_T= initial_T, initial_w = initial_w, initial_reference = initial_reference)
 loss_values = dif.train(epochs,batch_size,visual=True)
 
-#Save Image
-delta = 200
-grid = torch.cartesian_prod(torch.linspace(-lignes/8, 1.125*lignes,delta),torch.linspace(-colonnes/8, 1.125*colonnes, delta))
-density = torch.exp(dif.log_density(grid)).reshape(delta,delta).T.cpu().detach()
-plt.imsave('try.jpg',torch.flip(torch.flip(density.T,[0,1]),[0,1]))
-
-#Save model
+#Save dif
 filename = 'euler_dif.sav'
 pickle.dump(dif,open(filename,'wb'))
