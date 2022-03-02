@@ -3,9 +3,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torch import nn
+from pathlib import Path
 import pickle
 import sys
-sys.path.append('../../..')
+
+sys.path.append(str((Path('..') / Path('..') / Path('..')).resolve()))
+sys.path.append(str((Path('.')).resolve()))
+
+print(sys.path)
 
 from models import LocationScaleFlow
 from models import EMDensityEstimator
@@ -15,7 +20,7 @@ from models import GeneralizedMultivariateNormalReference
 
 torch.manual_seed(0)
 #Load target image
-rgb = image.imread("euler.jpg")
+rgb = image.imread("./experiments/Figures/euler/euler.jpg")
 def rgb2gray(rgb):
     return np.dot(rgb[...,:3], [0.2989, 0.5870, 0.1140])
 grey = torch.tensor(rgb2gray(rgb))
