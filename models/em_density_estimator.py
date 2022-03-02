@@ -84,8 +84,6 @@ class EMDensityEstimator(nn.Module):
         self.reference.device = cpu
         self.T.to(cpu)
         self.T.device = cpu
-        self.w.to(cpu)
-        self.w.device = cpu
 
     def to_gpu(self):
         gpu = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -95,8 +93,6 @@ class EMDensityEstimator(nn.Module):
         self.reference.device = gpu
         self.T.to(gpu)
         self.T.device = gpu
-        self.w.to(gpu)
-        self.w.device = gpu
 
 
     def train(self, epochs, visual = False):
