@@ -42,9 +42,10 @@ class EMDensityEstimator(nn.Module):
         return unormalized_log_v - torch.logsumexp(unormalized_log_v, dim = -1, keepdim= True)
 
     def sample_latent(self,x):
-        z = self.T.forward(x)
-        pick = Categorical(torch.exp(self.compute_log_v(x))).sample()
-        return torch.stack([z[i,pick[i],:] for i in range(x.shape[0])])
+        with torch.no_grad():
+            z = self.T.forward(x)
+            pick = Categorical(torch.exp(self.compute_log_v(x))).sample()
+            return torch.stack([z[i,pick[i],:] for i in range(x.shape[0])])
 
     def log_density(self, x):
         x = x.to(self.device)
@@ -52,10 +53,11 @@ class EMDensityEstimator(nn.Module):
         return torch.logsumexp(self.reference.log_density(z) + self.log_pi.unsqueeze(0).repeat(x.shape[0],1) + self.T.log_det_J(x),dim=-1)
 
     def sample_model(self, num_samples):
-        z = self.reference.sample(num_samples)
-        x = self.T.backward(z)
-        pick = Categorical(torch.exp(self.log_pi.unsqueeze(0).repeat(x.shape[0],1))).sample()
-        return torch.stack([x[i,pick[i],:] for i in range(z.shape[0])])
+        with torch.no_grad():
+            z = self.reference.sample(num_samples)
+            x = self.T.backward(z)
+            pick = Categorical(torch.exp(self.log_pi.unsqueeze(0).repeat(x.shape[0],1))).sample()
+            return torch.stack([x[i,pick[i],:] for i in range(z.shape[0])])
 
     def M_step(self, batch):
         v = torch.exp(self.compute_log_v(batch))

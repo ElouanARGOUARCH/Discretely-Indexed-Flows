@@ -29,17 +29,17 @@ grey = torch.tensor(rgb2gray(rgb))
 vector_density = grey.flatten()
 vector_density = vector_density/torch.sum(vector_density)
 lignes, colonnes = grey.shape
-num_samples = 200000
+num_samples = 2000
 cat = torch.distributions.Categorical(probs = vector_density)
 categorical_samples = cat.sample([num_samples])
 target_samples = torch.cat([(categorical_samples//colonnes).unsqueeze(-1), (categorical_samples%colonnes).unsqueeze(-1)], dim = -1) + torch.rand([num_samples,2])
 
 #Save target sampels
-filename = 'euler_samples.sav'
+filename = './experiments/Figures/euler/euler_samples.sav'
 pickle.dump(target_samples,open(filename,'wb'))
 
 #Run EM
-epochs = 200
+epochs = 20
 K = 49
 initial_m = torch.cartesian_prod(torch.linspace(0, lignes,7),torch.linspace(0, colonnes, 7))
 initial_L = torch.eye(2).unsqueeze(0).repeat(K, 1, 1)
@@ -48,11 +48,11 @@ EM = EMDensityEstimator(target_samples,K, initial_T = initial_T)
 loss_values = EM.train(epochs,visual=True)
 
 #Save em
-filename = 'euler_em.sav'
+filename = './experiments/Figures/euler/euler_em.sav'
 pickle.dump(EM,open(filename,'wb'))
 
 #Run DIF with initialization EM
-epochs = 10000
+epochs = 100
 batch_size = 20000
 initial_T = EM.T
 initial_w = SoftmaxWeight(K, 2, [64,64,64], mode = 'NN')
@@ -63,5 +63,5 @@ dif = DIFDensityEstimator(target_samples,K, initial_T= initial_T, initial_w = in
 loss_values = dif.train(epochs,batch_size,visual=True)
 
 #Save dif
-filename = 'euler_dif.sav'
+filename = './experiments/Figures/euler/euler_dif.sav'
 pickle.dump(dif,open(filename,'wb'))

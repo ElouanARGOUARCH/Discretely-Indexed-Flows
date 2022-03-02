@@ -28,7 +28,7 @@ categorical_samples = cat.sample([num_samples])
 target_samples = torch.cat([(categorical_samples//colonnes).unsqueeze(-1), (categorical_samples%colonnes).unsqueeze(-1)], dim = -1) + torch.rand([num_samples,2])
 
 #Save target sampels
-filename = 'gauss_samples.sav'
+filename = './experiments/Figures/gauss/gauss_samples.sav'
 pickle.dump(target_samples,open(filename,'wb'))
 
 #Run EM
@@ -41,7 +41,7 @@ EM = EMDensityEstimator(target_samples,K, initial_T = initial_T)
 loss_values = EM.train(epochs,visual=True)
 
 #Save em
-filename = 'gauss_em.sav'
+filename = './experiments/Figures/gauss/gauss_em.sav'
 pickle.dump(EM,open(filename,'wb'))
 
 #Run DIF with initialization EM
@@ -56,5 +56,5 @@ dif = DIFDensityEstimator(target_samples,K, initial_T= initial_T, initial_w = in
 loss_values = dif.train(epochs,batch_size,visual=True)
 
 #Save dif
-filename = 'gauss_dif.sav'
+filename = './experiments/Figures/gauss/gauss_dif.sav'
 pickle.dump(dif,open(filename,'wb'))
