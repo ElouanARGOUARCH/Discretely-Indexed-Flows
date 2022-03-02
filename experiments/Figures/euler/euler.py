@@ -5,7 +5,7 @@ import torch
 from torch import nn
 import pickle
 import sys
-sys.path.append('..\..\..')
+sys.path.append('../../..')
 
 from models import LocationScaleFlow
 from models import EMDensityEstimator
