@@ -3,9 +3,9 @@ from torch import nn
 from torch.distributions import Categorical
 from tqdm import tqdm
 
-from models.location_scale_flow import LocationScaleFlow
-from models.softmax_weight import SoftmaxWeight
-from models.generalized_multivariate_normal_reference import GeneralizedMultivariateNormalReference
+from models.old_location_scale_flow import LocationScaleFlow
+from models.old_softmax_weight import SoftmaxWeight
+from models.old_generalized_multivariate_normal_reference import GeneralizedMultivariateNormalReference
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,61 +16,26 @@ import seaborn as sns
 import pandas as pd
 
 class DIFDensityEstimator(nn.Module):
-    def __init__(self,target_samples,K, initial_reference = None, initial_w = None, initial_T = None):
+    def __init__(self,target_samples,K):
         super().__init__()
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.target_samples = target_samples.to(self.device)
+        self.target_samples = target_samples
         self.p = self.target_samples.shape[-1]
         self.K = K
 
-        if initial_reference == None:
-            self.reference = GeneralizedMultivariateNormalReference(self.p).to(self.device)
-        else:
-            self.reference = initial_reference
+        self.reference = GeneralizedMultivariateNormalReference(self.p)
 
-        if initial_w == None:
-            self.w = SoftmaxWeight(self.K, self.p, [], mode = 'Linear').to(self.device)
-        else:
-            self.w = initial_w
+        self.w = SoftmaxWeight(self.K, self.p, [])
 
-        if initial_T == None:
-            initial_log_s = torch.zeros(self.K, self.p).to(self.device)
-            initial_m = self.target_samples[torch.randint(low= 0, high = self.target_samples.shape[0],size = [self.K])].to(self.device)
-            self.T = LocationScaleFlow(self.K, self.p, initial_m = initial_m, initial_log_s = initial_log_s).to(self.device)
-        else:
-            self.T = initial_T
+        self.T = LocationScaleFlow(self.K, self.p)
+        self.T.m = nn.Parameter(self.target_samples[torch.randint(low= 0, high = self.target_samples.shape[0],size = [self.K])])
 
-        self.para_list = list(self.w.parameters()) + list(self.T.parameters()) + list(self.reference.parameters())
-        self.optimizer = torch.optim.Adam(self.para_list, lr=5e-3)
-
-        self.to(self.device)
-
-    def to_cpu(self):
-        cpu = torch.device('cpu')
-        self.to(cpu)
-        self.device = cpu
-        self.reference.to(cpu)
-        self.reference.device = cpu
-        self.T.to(cpu)
-        self.T.device = cpu
-        self.w.to(cpu)
-        self.w.device = cpu
-
-    def to_gpu(self):
-        gpu = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.to(gpu)
-        self.device = gpu
-        self.reference.to(gpu)
-        self.reference.device = gpu
-        self.T.to(gpu)
-        self.T.device = gpu
-        self.w.to(gpu)
-        self.w.device = gpu
+        self.loss_values = []
 
     def compute_log_v(self,x):
-        z = self.T.forward(x)
-        log_v = self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.T.log_det_J(x)
-        return log_v - torch.logsumexp(log_v, dim = -1, keepdim= True)
+        with torch.no_grad():
+            z = self.T.forward(x)
+            log_v = self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.T.log_det_J(x)
+            return log_v - torch.logsumexp(log_v, dim = -1, keepdim= True)
 
     def sample_latent(self,x):
         with torch.no_grad():
@@ -79,9 +44,9 @@ class DIFDensityEstimator(nn.Module):
             return torch.stack([z[i,pick[i],:] for i in range(x.shape[0])])
 
     def log_density(self, x):
-        x= x.to(self.device)
-        z = self.T.forward(x)
-        return torch.logsumexp(self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z),0,-2,-1) + self.T.log_det_J(x),dim=-1)
+        with torch.no_grad():
+            z = self.T.forward(x)
+            return torch.logsumexp(self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z),0,-2,-1) + self.T.log_det_J(x),dim=-1)
 
     def sample_model(self, num_samples):
         with torch.no_grad():
@@ -90,81 +55,62 @@ class DIFDensityEstimator(nn.Module):
             pick = Categorical(torch.exp(self.w.log_prob(z))).sample()
             return torch.stack([x[i,pick[i],:] for i in range(z.shape[0])])
 
-    def loss(self, batch, mode = 'SGD'):
-        if mode == 'SGD':
-            return - self.log_density(batch).mean()
-        elif mode == 'GradientEM':
-            log_v = self.compute_log_v(batch).detach()
-            z = self.T.forward(batch)
-            log_joint = self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.T.log_det_J(batch) - log_v
-            return - torch.sum(torch.exp(log_v) * log_joint, dim = -1).mean()
-        elif mode == 'GradientEM2':
-            log_v = self.compute_log_v(batch).detach()
-            z = self.T.forward(batch)
-            unormalized_log_w = self.w.unormalized_log_prob(z)
-            log_joint = self.reference.log_density(z) + self.T.log_det_J(batch) - log_v + torch.diagonal(unormalized_log_w, 0, -2, -1) - torch.logsumexp(unormalized_log_w, dim=-1).detach() - (torch.sum(torch.exp(unormalized_log_w), dim = -1) -torch.sum(torch.exp(unormalized_log_w), dim = -1).detach()) /(torch.sum(torch.exp(unormalized_log_w), dim = -1).detach())
-            return - torch.sum(torch.exp(log_v) * log_joint, dim = -1).mean()
+    def loss(self, batch):
+        z = self.T.forward(batch)
+        return -torch.mean(torch.logsumexp(self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.T.log_det_J(batch), dim=-1))
 
+    def train(self, epochs, batch_size = None):
+        self.para_list = list(self.parameters())
 
-    def train(self, epochs, batch_size = None, visual = False, mode = 'SGD'):
-        self.to(self.device)
-        self.to_gpu()
+        self.optimizer = torch.optim.Adam(self.para_list, lr=5e-3)
         if batch_size is None:
             batch_size = self.target_samples.shape[0]
-        with torch.no_grad():
-            perm = torch.randperm(self.target_samples.shape[0])
-            loss_values = [torch.tensor([self.loss(self.target_samples[perm][i*batch_size:min((i+1)*batch_size, self.target_samples.shape[0])]) for i in range(int(self.target_samples.shape[0]/batch_size))]).mean().item()]
-        best_loss = loss_values[0]
-        best_iteration = 0
-        best_parameters = self.state_dict()
+        dataset = torch.utils.data.TensorDataset(self.target_samples)
+
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.to(device)
+
         pbar = tqdm(range(epochs))
         for t in pbar:
-            perm = torch.randperm(self.target_samples.shape[0])
-            for i in range(int(self.target_samples.shape[0] / batch_size)):
+            dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
+            for i, batch in enumerate(dataloader):
+                x = batch[0].to(device)
                 self.optimizer.zero_grad()
-                batch_loss = self.loss(self.target_samples[perm][i * batch_size:min((i + 1) * batch_size, self.target_samples.shape[0])], mode = mode)
+                batch_loss = self.loss(x)
                 batch_loss.backward()
                 self.optimizer.step()
-            with torch.no_grad():
-                iteration_loss = torch.tensor([self.loss(self.target_samples[perm][i*batch_size:min((i+1)*batch_size, self.target_samples.shape[0])]) for i in range(int(self.target_samples.shape[0]/batch_size))]).mean().item()
-            pbar.set_postfix_str('loss = ' + str(iteration_loss))
-            loss_values.append(iteration_loss)
-            if iteration_loss < best_loss:
-                best_loss = iteration_loss
-                best_iteration = t+1
-                best_parameters = self.state_dict()
+            iteration_loss = torch.tensor([self.loss(batch[0].to(device)) for i, batch in enumerate(dataloader)]).mean().item()
+            self.loss_values.append(iteration_loss)
+            pbar.set_postfix_str('loss = ' + str(round(iteration_loss,6)))
+        self.cpu()
 
-        self.load_state_dict(best_parameters)
-        if visual:
-            self.train_visual(best_loss, best_iteration, loss_values)
-        self.to_cpu()
-        return loss_values
-
-    def train_visual(self, best_loss, best_iteration, loss_values):
+    def train_visual(self):
+        self.best_loss = min(self.loss_values)
+        self.best_iteration = self.loss_values.index(self.best_loss)
         fig = plt.figure(figsize=(12, 4))
         ax = plt.subplot(111)
-        Y1, Y2 = best_loss - (max(loss_values) - best_loss) / 2, max(loss_values) + (max(loss_values) - best_loss) / 4
+        Y1, Y2 = self.best_loss - (max(self.loss_values) - self.best_loss) / 2, max(self.loss_values) + (max(self.loss_values) - self.best_loss) / 4
         ax.set_ylim(Y1, Y2)
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-        ax.plot(loss_values, label='Loss values during training', color='black')
-        ax.scatter([best_iteration], [best_loss], color='black', marker='d')
-        ax.axvline(x=best_iteration, ymax=(best_loss - best_loss + (max(loss_values) - best_loss) / 2) / (
-                max(loss_values) + (max(loss_values) - best_loss) / 4 - best_loss + (
-                max(loss_values) - best_loss) / 2), color='black', linestyle='--')
-        ax.text(0, best_loss - (max(loss_values) - best_loss) / 8,
-                'best iteration = ' + str(best_iteration) + '\nbest loss = ' + str(np.round(best_loss, 5)),
+        ax.plot(self.loss_values, label='Loss values during training', color='black')
+        ax.scatter([self.best_iteration], [self.best_loss], color='black', marker='d')
+        ax.axvline(x=self.best_iteration, ymax=(self.best_loss - self.best_loss + (max(self.loss_values) - self.best_loss) / 2) / (
+                max(self.loss_values) + (max(self.loss_values) - self.best_loss) / 4 - self.best_loss + (
+                max(self.loss_values) - self.best_loss) / 2), color='black', linestyle='--')
+        ax.text(0, self.best_loss - (max(self.loss_values) - self.best_loss) / 8,
+                'best iteration = ' + str(self.best_iteration) + '\nbest loss = ' + str(np.round(self.best_loss, 5)),
                 verticalalignment='top', horizontalalignment='left', fontsize=12)
-        if len(loss_values) > 30:
-            x1, x2 = best_iteration - int(len(loss_values) / 15), min(best_iteration + int(len(loss_values) / 15),
-                                                                      len(loss_values) - 1)
-            k = len(loss_values) / (2.5 * (x2 - x1 + 1))
+        if len(self.loss_values) > 30:
+            x1, x2 = self.best_iteration - int(len(self.loss_values) / 15), min(self.best_iteration + int(len(self.loss_values) / 15),
+                                                                      len(self.loss_values) - 1)
+            k = len(self.loss_values) / (2.5 * (x2 - x1 + 1))
             offset = (Y2 - Y1) / (6 * k)
-            y1, y2 = best_loss - offset, best_loss + offset
+            y1, y2 = self.best_loss - offset, self.best_loss + offset
             axins = zoomed_inset_axes(ax, k, loc='upper right')
-            axins.axvline(x=best_iteration, ymax=(best_loss - y1) / (y2 - y1), color='black', linestyle='--')
-            axins.scatter([best_iteration], [best_loss], color='black', marker='d')
+            axins.axvline(x=self.best_iteration, ymax=(self.best_loss - y1) / (y2 - y1), color='black', linestyle='--')
+            axins.scatter([self.best_iteration], [self.best_loss], color='black', marker='d')
             axins.xaxis.set_major_locator(MaxNLocator(integer=True))
-            axins.plot(loss_values, color='black')
+            axins.plot(self.loss_values, color='black')
             axins.set_xlim(x1 - .5, x2 + .5)
             axins.set_ylim(y1, y2)
             mark_inset(ax, axins, loc1=3, loc2=4)
@@ -174,11 +120,11 @@ class DIFDensityEstimator(nn.Module):
         if self.p == 1:
             linspace = 500
             with torch.no_grad():
-                tt = torch.linspace(torch.min(self.target_samples), torch.max(self.target_samples), linspace).unsqueeze(1).to(self.device)
+                tt = torch.linspace(torch.min(self.target_samples), torch.max(self.target_samples), linspace).unsqueeze(1)
                 model_density = torch.exp(self.log_density(tt))
                 model_samples = self.sample_model(num_samples)
                 reference_samples = self.reference.sample(num_samples)
-                tt_r = torch.linspace(torch.min(reference_samples), torch.max(reference_samples), linspace).unsqueeze(1).to(self.device)
+                tt_r = torch.linspace(torch.min(reference_samples), torch.max(reference_samples), linspace).unsqueeze(1)
                 reference_density = torch.exp(self.reference.log_density(tt_r))
                 proxy_samples = self.sample_latent(self.target_samples[:num_samples])
             fig = plt.figure(figsize=(28, 16))
@@ -250,7 +196,7 @@ class DIFDensityEstimator(nn.Module):
 
         else:
             dim_dsplayed = 5
-            perm = torch.randperm(self.p).to(self.device)
+            perm = torch.randperm(self.p)
             with torch.no_grad():
                 target_samples = self.target_samples[:num_samples]
                 model_samples = self.sample_model(num_samples)
