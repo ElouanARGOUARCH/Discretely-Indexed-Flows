@@ -43,16 +43,15 @@ K = linspace_x*linspace_y
 initial_m = torch.cartesian_prod(torch.linspace(0, lignes,linspace_x),torch.linspace(0, colonnes, linspace_y))
 EM = EMDensityEstimator(target_samples,K)
 EM.mu = initial_m
-epochs = 10
+epochs = 500
 loss_values = EM.train(epochs)
-
 
 #Save em
 filename = './experiments/Figures/laplace/laplace_em.sav'
 pickle.dump(EM,open(filename,'wb'))
 
 #Run DIF with initialization EM
-epochs = 10
+epochs = 10000
 batch_size = 20000
 initial_T = LocationScaleFlow(K,2)
 initial_T.m = nn.Parameter(EM.m)
