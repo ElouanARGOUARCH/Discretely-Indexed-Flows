@@ -24,6 +24,8 @@ class EMDensityEstimator(nn.Module):
         self.m = self.target_samples[torch.randint(low= 0, high = self.target_samples.shape[0],size = [self.K])]
         self.log_s = torch.zeros(self.K,self.p)
 
+        self.loss_values = []
+
     def forward(self, x):
         desired_size = list(x.shape)
         desired_size.insert(-1, self.K)
@@ -69,52 +71,41 @@ class EMDensityEstimator(nn.Module):
         temp2 = torch.square(temp)
         self.log_s = torch.log(torch.sum(v.unsqueeze(-1).repeat(1, 1, self.p) * temp2,dim=0)/c.unsqueeze(-1))/2
 
-    def train(self, epochs, visual = False):
-        iteration_loss = -torch.mean(self.log_density(self.target_samples)).item()
-        loss_values = [iteration_loss]
-        best_loss = loss_values[0]
-        best_iteration = 0
-        best_parameters = self.state_dict()
+    def train(self, epochs):
         pbar = tqdm(range(epochs))
         for t in pbar:
             self.M_step(self.target_samples)
             iteration_loss = -torch.mean(self.log_density(self.target_samples)).detach().item()
-            loss_values.append(iteration_loss)
-            if iteration_loss < best_loss:
-                best_loss = iteration_loss
-                best_iteration = t+1
-                best_parameters = self.state_dict()
+            self.loss_values.append(iteration_loss)
             pbar.set_postfix_str('loss = ' + str(iteration_loss))
-        self.load_state_dict(best_parameters)
-        if visual:
-            self.train_visual(best_loss, best_iteration, loss_values)
-        return loss_values
 
-    def train_visual(self, best_loss, best_iteration, loss_values):
+    def train_visual(self):
+        self.best_loss = min(self.loss_values)
+        self.best_iteration = self.loss_values.index(self.best_loss)
         fig = plt.figure(figsize=(12, 4))
         ax = plt.subplot(111)
-        Y1, Y2 = best_loss - (max(loss_values) - best_loss) / 2, max(loss_values) + (max(loss_values) - best_loss) / 4
+        Y1, Y2 = self.best_loss - (max(self.loss_values) - self.best_loss) / 2, max(self.loss_values) + (max(self.loss_values) - self.best_loss) / 4
         ax.set_ylim(Y1, Y2)
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-        ax.plot(loss_values, label='Loss values during training', color='black')
-        ax.scatter([best_iteration], [best_loss], color='black', marker='d')
-        ax.axvline(x=best_iteration, ymax=(best_loss - best_loss + (max(loss_values) - best_loss) / 2) / (
-                max(loss_values) + (max(loss_values) - best_loss) / 4 - best_loss + (
-                max(loss_values) - best_loss) / 2), color='black', linestyle='--')
-        ax.text(0, best_loss - (max(loss_values) - best_loss) / 8,
-                'best iteration = ' + str(best_iteration) + '\nbest loss = ' + str(np.round(best_loss, 5)),
+        ax.plot(self.loss_values, label='Loss values during training', color='black')
+        ax.scatter([self.best_iteration], [self.best_loss], color='black', marker='d')
+        ax.axvline(x=self.best_iteration, ymax=(self.best_loss - self.best_loss + (max(self.loss_values) - self.best_loss) / 2) / (
+                max(self.loss_values) + (max(self.loss_values) - self.best_loss) / 4 - self.best_loss + (
+                max(self.loss_values) - self.best_loss) / 2), color='black', linestyle='--')
+        ax.text(0, self.best_loss - (max(self.loss_values) - self.best_loss) / 8,
+                'best iteration = ' + str(self.best_iteration) + '\nbest loss = ' + str(np.round(self.best_loss, 5)),
                 verticalalignment='top', horizontalalignment='left', fontsize=12)
-        if len(loss_values) > 30:
-            x1, x2 = best_iteration - int(len(loss_values) / 15), min(best_iteration + int(len(loss_values) / 15),
-                                                                      len(loss_values) - 1)
-            k = len(loss_values) / (2.5 * (x2 - x1 + 1))
+        if len(self.loss_values) > 30:
+            x1, x2 = self.best_iteration - int(len(self.loss_values) / 15), min(self.best_iteration + int(len(self.loss_values) / 15),
+                                                                      len(self.loss_values) - 1)
+            k = len(self.loss_values) / (2.5 * (x2 - x1 + 1))
             offset = (Y2 - Y1) / (6 * k)
-            y1, y2 = best_loss - offset, best_loss + offset
+            y1, y2 = self.best_loss - offset, self.best_loss + offset
             axins = zoomed_inset_axes(ax, k, loc='upper right')
-            axins.axvline(x=best_iteration, ymax=(best_loss - y1) / (y2 - y1), color='black', linestyle='--')
-            axins.scatter([best_iteration], [best_loss], color='black', marker='d')
+            axins.axvline(x=self.best_iteration, ymax=(self.best_loss - y1) / (y2 - y1), color='black', linestyle='--')
+            axins.scatter([self.best_iteration], [self.best_loss], color='black', marker='d')
             axins.xaxis.set_major_locator(MaxNLocator(integer=True))
-            axins.plot(loss_values, color='black')
+            axins.plot(self.loss_values, color='black')
             axins.set_xlim(x1 - .5, x2 + .5)
             axins.set_ylim(y1, y2)
             mark_inset(ax, axins, loc1=3, loc2=4)

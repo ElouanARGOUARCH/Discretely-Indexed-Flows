@@ -3,9 +3,9 @@ from torch import nn
 from torch.distributions import Categorical
 from tqdm import tqdm
 
-from models.old_location_scale_flow import LocationScaleFlow
-from models.old_softmax_weight import SoftmaxWeight
-from models.old_generalized_multivariate_normal_reference import GeneralizedMultivariateNormalReference
+from models.location_scale_flow import LocationScaleFlow
+from models.softmax_weight import SoftmaxWeight
+from models.generalized_multivariate_normal_reference import GeneralizedMultivariateNormalReference
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -79,7 +79,8 @@ class DIFDensityEstimator(nn.Module):
                 batch_loss = self.loss(x)
                 batch_loss.backward()
                 self.optimizer.step()
-            iteration_loss = torch.tensor([self.loss(batch[0].to(device)) for i, batch in enumerate(dataloader)]).mean().item()
+            with torch.no_grad():
+                iteration_loss = torch.tensor([self.loss(batch[0].to(device)) for i, batch in enumerate(dataloader)]).mean().item()
             self.loss_values.append(iteration_loss)
             pbar.set_postfix_str('loss = ' + str(round(iteration_loss,6)))
         self.cpu()
