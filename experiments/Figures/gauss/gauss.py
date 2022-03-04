@@ -27,7 +27,7 @@ grey = torch.tensor(rgb2gray(rgb))
 vector_density = grey.flatten()
 vector_density = vector_density/torch.sum(vector_density)
 lignes, colonnes = grey.shape
-num_samples = 200000
+num_samples = 500000
 cat = torch.distributions.Categorical(probs = vector_density)
 categorical_samples = cat.sample([num_samples])
 target_samples = torch.cat([(categorical_samples//colonnes).unsqueeze(-1), (categorical_samples%colonnes).unsqueeze(-1)], dim = -1) + torch.rand([num_samples,2])
@@ -37,13 +37,13 @@ filename = './experiments/Figures/gauss/gauss_samples.sav'
 pickle.dump(target_samples,open(filename,'wb'))
 
 #Run EM
-linspace_x = 7
-linspace_y = 7
+linspace_x = 8
+linspace_y = 8
 K = linspace_x*linspace_y
 initial_m = torch.cartesian_prod(torch.linspace(0, lignes,linspace_x),torch.linspace(0, colonnes, linspace_y))
 EM = EMDensityEstimator(target_samples,K)
 EM.mu = initial_m
-epochs = 200
+epochs = 500
 loss_values = EM.train(epochs)
 
 #Save em
@@ -51,14 +51,14 @@ filename = './experiments/Figures/gauss/gauss_em.sav'
 pickle.dump(EM,open(filename,'wb'))
 
 #Run DIF with initialization EM
-epochs = 1000
+epochs = 10000
 batch_size = 20000
 initial_T = LocationScaleFlow(K,2)
 initial_T.m = nn.Parameter(EM.m)
 initial_T.log_s = nn.Parameter(EM.log_s)
 
-initial_w = SoftmaxWeight(K, 2, [64,64,64])
-initial_w.f[-1].weight = nn.Parameter(torch.zeros(K, 64))
+initial_w = SoftmaxWeight(K, 2, [128,128,128])
+initial_w.f[-1].weight = nn.Parameter(torch.zeros(K, 128))
 initial_w.f[-1].bias = nn.Parameter(EM.log_pi)
 
 dif = DIFDensityEstimator(target_samples,K)
