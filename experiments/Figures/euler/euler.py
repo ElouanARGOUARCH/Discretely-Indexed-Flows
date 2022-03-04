@@ -51,7 +51,7 @@ filename = './experiments/Figures/euler/euler_em.sav'
 pickle.dump(EM,open(filename,'wb'))
 
 #Run DIF with initialization EM
-epochs = 10000
+epochs = 1000
 batch_size = 20000
 initial_T = LocationScaleFlow(K,2)
 initial_T.m = nn.Parameter(EM.m)
