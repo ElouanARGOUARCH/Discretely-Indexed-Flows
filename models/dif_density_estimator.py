@@ -71,7 +71,8 @@ class DIFDensityEstimator(nn.Module):
         self.to(device)
 
         pbar = tqdm(range(epochs))
-        for t in pbar:
+        #for t in pbar:
+        for t in range(epochs):
             dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
             for i, batch in enumerate(dataloader):
                 x = batch[0].to(device)
@@ -79,10 +80,10 @@ class DIFDensityEstimator(nn.Module):
                 batch_loss = self.loss(x)
                 batch_loss.backward()
                 self.optimizer.step()
-            with torch.no_grad():
-                iteration_loss = torch.tensor([self.loss(batch[0].to(device)) for i, batch in enumerate(dataloader)]).mean().item()
-            self.loss_values.append(iteration_loss)
-            pbar.set_postfix_str('loss = ' + str(round(iteration_loss,6)))
+            #with torch.no_grad():
+            #    iteration_loss = torch.tensor([self.loss(batch[0].to(device)) for i, batch in enumerate(dataloader)]).mean().item()
+            #self.loss_values.append(iteration_loss)
+            #pbar.set_postfix_str('loss = ' + str(round(iteration_loss,6)))
         self.cpu()
 
     def train_visual(self):
