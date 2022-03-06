@@ -70,7 +70,7 @@ class DIFDensityEstimator(nn.Module):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.to(device)
 
-        pbar = tqdm(range(epochs))
+        #pbar = tqdm(range(epochs))
         #for t in pbar:
         for t in range(epochs):
             dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
