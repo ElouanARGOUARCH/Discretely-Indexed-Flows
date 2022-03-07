@@ -43,7 +43,7 @@ K = linspace_x*linspace_y
 initial_m = torch.cartesian_prod(torch.linspace(0, lignes,linspace_x),torch.linspace(0, colonnes, linspace_y))
 EM = EMDensityEstimator(target_samples,K)
 EM.mu = initial_m
-epochs = 500
+epochs = 50
 loss_values = EM.train(epochs)
 
 #Save em
