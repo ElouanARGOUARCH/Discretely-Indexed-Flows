@@ -2,7 +2,6 @@ from matplotlib import image
 import numpy as np
 import torch
 from torch import nn
-import pickle
 
 import sys
 from pathlib import Path
@@ -34,7 +33,7 @@ target_samples = torch.cat([(categorical_samples//colonnes).unsqueeze(-1), (cate
 
 #Save target sampels
 filename = './experiments/Figures/gauss/gauss_samples.sav'
-pickle.dump(target_samples,open(filename,'wb'))
+torch.save(target_samples,filename)
 
 #Run EM
 linspace_x = 8
@@ -48,7 +47,7 @@ loss_values = EM.train(epochs)
 
 #Save em
 filename = './experiments/Figures/gauss/gauss_em.sav'
-pickle.dump(EM,open(filename,'wb'))
+torch.save(EM,filename)
 
 #Run DIF with initialization EM
 epochs = 10000
@@ -68,4 +67,4 @@ dif.train(epochs, batch_size)
 
 #Save dif
 filename = './experiments/Figures/gauss/gauss_dif.sav'
-pickle.dump(dif,open(filename,'wb'))
+torch.save(dif,filename)
