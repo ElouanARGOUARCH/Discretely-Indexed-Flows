@@ -34,7 +34,7 @@ target_samples = torch.cat([(categorical_samples//colonnes).unsqueeze(-1), (cate
 
 #Save target sampels
 filename = './experiments/Figures/laplace/laplace_samples.sav'
-pickle.dump(target_samples,open(filename,'wb'))
+torch.save(target_samples,filename)
 
 #Run EM
 linspace_x = 8
@@ -43,12 +43,12 @@ K = linspace_x*linspace_y
 initial_m = torch.cartesian_prod(torch.linspace(0, lignes,linspace_x),torch.linspace(0, colonnes, linspace_y))
 EM = EMDensityEstimator(target_samples,K)
 EM.mu = initial_m
-epochs = 500
+epochs = 50
 loss_values = EM.train(epochs)
 
 #Save em
 filename = './experiments/Figures/laplace/laplace_em.sav'
-pickle.dump(EM,open(filename,'wb'))
+torch.save(EM,filename)
 
 #Run DIF with initialization EM
 epochs = 10000
@@ -68,4 +68,4 @@ dif.train(epochs, batch_size)
 
 #Save dif
 filename = './experiments/Figures/laplace/laplace_dif.sav'
-pickle.dump(dif,open(filename,'wb'))
+torch.save(dif,filename)
