@@ -26,7 +26,7 @@ grey = torch.tensor(rgb2gray(rgb))
 vector_density = grey.flatten()
 vector_density = vector_density/torch.sum(vector_density)
 lignes, colonnes = grey.shape
-num_samples = 5000
+num_samples = 500000
 cat = torch.distributions.Categorical(probs = vector_density)
 categorical_samples = cat.sample([num_samples])
 target_samples = torch.cat([(categorical_samples//colonnes).unsqueeze(-1), (categorical_samples%colonnes).unsqueeze(-1)], dim = -1) + torch.rand([num_samples,2])
@@ -42,7 +42,7 @@ K = linspace_x*linspace_y
 initial_m = torch.cartesian_prod(torch.linspace(0, lignes,linspace_x),torch.linspace(0, colonnes, linspace_y))
 EM = EMDensityEstimator(target_samples,K)
 EM.mu = initial_m
-epochs = 1
+epochs = 50
 EM.train(epochs)
 
 #Save em
@@ -50,7 +50,7 @@ filename = './experiments/Figures/euler/euler_em.sav'
 torch.save(EM,filename)
 
 #Run DIF with initialization EM
-epochs = 1
+epochs = 10000
 batch_size = 20000
 initial_T = LocationScaleFlow(K,2)
 initial_T.m = nn.Parameter(EM.m)
