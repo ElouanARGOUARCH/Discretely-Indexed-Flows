@@ -11,7 +11,6 @@ sys.path.append(str((Path('.')).resolve()))
 from models import EMDensityEstimator
 from models import LocationScaleFlow
 from models import SoftmaxWeight
-from models import GeneralizedMultivariateNormalReference
 from models import DIFDensityEstimator
 
 torch.manual_seed(0)
