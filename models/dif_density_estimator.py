@@ -3,6 +3,7 @@ from torch import nn
 from torch.distributions import Categorical
 from tqdm import tqdm
 
+from models.multivariate_normal_reference import MultivariateNormalReference
 from models.location_scale_flow import LocationScaleFlow
 from models.softmax_weight import SoftmaxWeight
 
@@ -21,7 +22,7 @@ class DIFDensityEstimator(nn.Module):
         self.p = self.target_samples.shape[-1]
         self.K = K
 
-        self.reference = torch.distributions.MultivariateNormal(torch.zeros(self.p), torch.eye(self.p))
+        self.reference = MultivariateNormalReference(self.p)
 
         self.w = SoftmaxWeight(self.K, self.p, [])
 
@@ -33,7 +34,7 @@ class DIFDensityEstimator(nn.Module):
     def compute_log_v(self,x):
         with torch.no_grad():
             z = self.T.forward(x)
-            log_v = self.reference.log_prob(z) + torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.T.log_det_J(x)
+            log_v = self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.T.log_det_J(x)
             return log_v - torch.logsumexp(log_v, dim = -1, keepdim= True)
 
     def sample_latent(self,x):
@@ -45,18 +46,18 @@ class DIFDensityEstimator(nn.Module):
     def log_density(self, x):
         with torch.no_grad():
             z = self.T.forward(x)
-            return torch.logsumexp(self.reference.log_prob(z) + torch.diagonal(self.w.log_prob(z),0,-2,-1) + self.T.log_det_J(x),dim=-1)
+            return torch.logsumexp(self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z),0,-2,-1) + self.T.log_det_J(x),dim=-1)
 
     def sample_model(self, num_samples):
         with torch.no_grad():
-            z = self.reference.sample([num_samples])
+            z = self.reference.sample(num_samples)
             x = self.T.backward(z)
             pick = Categorical(torch.exp(self.w.log_prob(z))).sample()
             return torch.stack([x[i,pick[i],:] for i in range(z.shape[0])])
 
     def loss(self, batch):
         z = self.T.forward(batch)
-        return -torch.mean(torch.logsumexp(self.reference.log_prob(z) + torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.T.log_det_J(batch), dim=-1))
+        return -torch.mean(torch.logsumexp(self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.T.log_det_J(batch), dim=-1))
 
     def train(self, epochs, batch_size = None):
         self.para_list = list(self.parameters())
@@ -71,7 +72,6 @@ class DIFDensityEstimator(nn.Module):
 
         pbar = tqdm(range(epochs))
         for t in pbar:
-        #for t in range(epochs):
             dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
             for i, batch in enumerate(dataloader):
                 x = batch[0].to(device)
@@ -124,9 +124,9 @@ class DIFDensityEstimator(nn.Module):
                 tt = torch.linspace(torch.min(self.target_samples), torch.max(self.target_samples), linspace).unsqueeze(1)
                 model_density = torch.exp(self.log_density(tt))
                 model_samples = self.sample_model(num_samples)
-                reference_samples = self.reference.sample([num_samples])
+                reference_samples = self.reference.sample(num_samples)
                 tt_r = torch.linspace(torch.min(reference_samples), torch.max(reference_samples), linspace).unsqueeze(1)
-                reference_density = torch.exp(self.reference.log_prob(tt_r))
+                reference_density = torch.exp(self.reference.log_density(tt_r))
                 proxy_samples = self.sample_latent(self.target_samples[:num_samples])
             fig = plt.figure(figsize=(28, 16))
             ax1 = fig.add_subplot(221)
@@ -156,7 +156,7 @@ class DIFDensityEstimator(nn.Module):
             with torch.no_grad():
                 target_samples = self.target_samples[:num_samples]
                 model_samples = self.sample_model(num_samples)
-                reference_samples = self.reference.sample([num_samples])
+                reference_samples = self.reference.sample(num_samples)
                 proxy_samples = self.sample_latent(target_samples)
             df_target = pd.DataFrame(target_samples.cpu().numpy())
             df_target['label']= 'Data'
@@ -189,7 +189,7 @@ class DIFDensityEstimator(nn.Module):
             with torch.no_grad():
                 target_samples = self.target_samples[:num_samples]
                 model_samples = self.sample_model(num_samples)
-                reference_samples = self.reference.sample([num_samples])
+                reference_samples = self.reference.sample(num_samples)
                 proxy_samples = self.sample_latent(target_samples)
             df_target = pd.DataFrame(target_samples[:,perm][:,:dim_dsplayed].cpu().numpy())
             df_target['label']= 'Data'

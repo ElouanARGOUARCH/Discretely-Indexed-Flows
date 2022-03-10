@@ -3,6 +3,7 @@ from torch import nn
 from torch.distributions import Categorical
 from tqdm import tqdm
 
+from models.multivariate_normal_reference import MultivariateNormalReference
 from models.location_scale_flow import LocationScaleFlow
 from models.softmax_weight import SoftmaxWeight
 
@@ -20,7 +21,7 @@ class DIFSampler(nn.Module):
 
         self.T = LocationScaleFlow(self.K, self.p)
 
-        self.reference = torch.distributions.MultivariateNormal(torch.zeros(self.p), torch.eye(self.p))
+        self.reference = MultivariateNormalReference(self.p)
         self.loss_values = []
 
     def compute_log_v(self, x):
@@ -47,7 +48,7 @@ class DIFSampler(nn.Module):
 
     def model_log_density(self, x):
         z = self.T.forward(x)
-        return torch.logsumexp(torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.reference.log_prob(z) + self.T.log_det_J(x),
+        return torch.logsumexp(torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.reference.log_density(z) + self.T.log_det_J(x),
             dim=-1)
 
     def train(self, num_samples, epochs, batch_size=None):
@@ -59,7 +60,7 @@ class DIFSampler(nn.Module):
         if batch_size is None:
             batch_size = self.target_samples.shape[0]
 
-        reference_samples = self.reference.sample([num_samples])
+        reference_samples = self.reference.sample(num_samples)
         dataset = torch.utils.data.TensorDataset(reference_samples)
 
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -85,11 +86,11 @@ class DIFSampler(nn.Module):
         if self.p == 1:
             linspace = 500
             with torch.no_grad():
-                reference_samples = self.reference.sample([num_samples]).cpu()
+                reference_samples = self.reference.sample(num_samples).cpu()
                 tt_r = torch.linspace(torch.min(reference_samples), torch.max(reference_samples), linspace).unsqueeze(
                     1)
                 proxy_density = torch.exp(self.proxy_log_density(tt_r)).cpu()
-                reference_density = torch.exp(self.reference.log_prob(tt_r)).cpu()
+                reference_density = torch.exp(self.reference.log_density(tt_r)).cpu()
 
                 model_samples = self.sample_model(num_samples)
                 tt = torch.linspace(torch.min(model_samples), torch.max(model_samples), linspace).unsqueeze(1)

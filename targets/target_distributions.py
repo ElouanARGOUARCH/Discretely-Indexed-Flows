@@ -158,7 +158,7 @@ class Target:
         if choice == "Normalized Dimension 1":
             self.p = 1
             num_component = 6
-            means = torch.tensor([[-0.25], [1.875], [4.125], [6.25], [-8.5],[-11.5]])
+            means = torch.tensor([[-0.25], [1.875], [4.125], [6.25], [-5.5],[-8.5]])
             covs = torch.tensor([[[1.]], [[.5]], [[.5]], [[2.]], [[1]],[[1]]])
             comp = torch.ones(num_component)
             mvn_target = MultivariateNormal(means, covs)
