@@ -8,5 +8,7 @@ setup(
     license='',
     author='EA264728',
     author_email='elouan.argouarch@gmail.com',
+    setup_requires = ['wheel'],
+    install_requires = ['torch','tqdm','numpy', 'matplotlib', 'seaborn'],
     description=''
 )
