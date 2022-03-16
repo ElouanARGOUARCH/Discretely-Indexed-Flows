@@ -6,9 +6,9 @@ class SoftmaxWeight(nn.Module):
         super().__init__()
         self.K = K
         self.p = p
-        network_dimensions = [self.p] + hidden_dimensions + [self.K]
+        self.network_dimensions = [self.p] + hidden_dimensions + [self.K]
         network = []
-        for h0, h1 in zip(network_dimensions, network_dimensions[1:]):
+        for h0, h1 in zip(self.network_dimensions, self.network_dimensions[1:]):
             network.extend([nn.Linear(h0, h1),nn.Tanh(),])
         network.pop()
         self.f = nn.Sequential(*network)
