@@ -136,11 +136,11 @@ class Target:
 
         if choice == "Hollow Circle":
             self.p = 2
-            epsilon = 0.01
+            epsilon = 0.1
             theta = 2*3.1415*torch.rand([num_samples])
             samples = torch.cat([torch.cos(theta).unsqueeze(-1), torch.sin(theta).unsqueeze(-1)], dim = -1)
             samples += torch.randn(samples.shape)*epsilon
-            self.target_log_density = lambda samples: 1*(torch.abs(torch.square(samples[:,0]) + torch.square(samples[:,1]) - 1) < 0.707106*epsilon)
+            self.target_log_density = lambda samples: 1*(torch.abs(torch.square(samples[...,0]) + torch.square(samples[...,0]) - 1) < 0.707106*epsilon)
             self.target_samples = samples
 
         if choice == "Unormalized Dimension 1":
@@ -164,8 +164,8 @@ class Target:
             mvn_target = MultivariateNormal(means, covs)
             cat = Categorical(comp / torch.sum(comp))
             mix_target = MixtureSameFamily(cat, mvn_target)
-            self.target_log_density = lambda samples: mix_target.log_prob(samples.cpu()).to(cuda)
-            self.target_samples = mix_target.sample([num_samples]).to(cuda)
+            self.target_log_density = lambda samples: mix_target.log_prob(samples.cpu()).to(samples.device)
+            self.target_samples = mix_target.sample([num_samples])
 
         if choice == "Test":
             self.p = 1
@@ -379,7 +379,7 @@ class Target:
             cat = Categorical(torch.exp(weights_target) / torch.sum(torch.exp(weights_target)))
             mix_target = MixtureSameFamily(cat, mvn_target)
             self.target_samples = mix_target.sample([num_samples])
-            self.target_log_density = lambda samples: mix_target.log_prob(samples.to(cpu)).to(cuda)
+            self.target_log_density = lambda samples: mix_target.log_prob(samples.to(cpu)).to(samples.device)
 
         if choice == "Multimodal Dimension 128":
             self.p = 128

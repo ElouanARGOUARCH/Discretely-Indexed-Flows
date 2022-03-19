@@ -27,7 +27,7 @@ class DIFSampler(nn.Module):
     def compute_log_v(self, x):
         with torch.no_grad():
             z = self.T.forward(x)
-            log_v = self.target_log_density(z) + torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.T.log_det_J(x)
+            log_v = self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.T.log_det_J(x)
             return log_v - torch.logsumexp(log_v, dim=-1, keepdim=True)
 
     def loss(self, z):
@@ -36,7 +36,7 @@ class DIFSampler(nn.Module):
 
     def sample_model(self, num_samples):
         with torch.no_grad():
-            z = self.reference.sample([num_samples])
+            z = self.reference.sample(num_samples)
             x = self.T.backward(z)
             pick = Categorical(torch.exp(self.w.log_prob(z))).sample()
             return torch.stack([x[i, pick[i], :] for i in range(num_samples)])
@@ -51,14 +51,14 @@ class DIFSampler(nn.Module):
         return torch.logsumexp(torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.reference.log_density(z) + self.T.log_det_J(x),
             dim=-1)
 
-    def train(self, num_samples, epochs, batch_size=None):
+    def train(self, epochs,num_samples, batch_size=None):
 
         self.para_list = list(self.parameters())
 
         self.optimizer = torch.optim.Adam(self.para_list, lr=5e-3)
 
         if batch_size is None:
-            batch_size = self.target_samples.shape[0]
+            batch_size = num_samples
 
         reference_samples = self.reference.sample(num_samples)
         dataset = torch.utils.data.TensorDataset(reference_samples)
