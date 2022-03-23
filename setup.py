@@ -9,6 +9,8 @@ setup(
     author='EA264728',
     author_email='elouan.argouarch@gmail.com',
     setup_requires = ['wheel'],
-    install_requires = ['torch','tqdm','jupyter','matplotlib', 'seaborn', 'git+https://github.com/ElouanARGOUARCH/ExpectationMaximisation.git', 'git+https://github.com/ElouanARGOUARCH/TargetExamples.git'],
+    install_requires = ['torch','tqdm','jupyter','matplotlib', 'seaborn',
+                        'ExpectationMaximisation @ git+https://github.com/ElouanARGOUARCH/ExpectationMaximisation.git',
+                        "TargetExamples @ git+https://github.com/ElouanARGOUARCH/TargetExamples.git"],
     description=''
 )
