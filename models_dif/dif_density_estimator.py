@@ -3,9 +3,9 @@ from torch import nn
 from torch.distributions import Categorical
 from tqdm import tqdm
 
-from models.multivariate_normal_reference import MultivariateNormalReference
-from models.location_scale_flow import LocationScaleFlow
-from models.softmax_weight import SoftmaxWeight
+from models_dif.multivariate_normal_reference import MultivariateNormalReference
+from models_dif.location_scale_flow import LocationScaleFlow
+from models_dif.softmax_weight import SoftmaxWeight
 
 class DIFDensityEstimator(nn.Module):
     def __init__(self, target_samples, K):
