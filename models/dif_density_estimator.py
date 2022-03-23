@@ -7,11 +7,6 @@ from models.multivariate_normal_reference import MultivariateNormalReference
 from models.location_scale_flow import LocationScaleFlow
 from models.softmax_weight import SoftmaxWeight
 
-
-import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
-
 class DIFDensityEstimator(nn.Module):
     def __init__(self, target_samples, K):
         super().__init__()
