@@ -54,9 +54,6 @@ class DIFDensityEstimator(nn.Module):
     def train(self, epochs, batch_size = None):
         self.para_list = list(self.parameters())
 
-        best_parameters = self.state_dict()
-        best_loss = self.loss_values[0]
-
         self.optimizer = torch.optim.Adam(self.para_list, lr=5e-3)
         if batch_size is None:
             batch_size = self.target_samples.shape[0]
@@ -76,10 +73,6 @@ class DIFDensityEstimator(nn.Module):
                 self.optimizer.step()
             with torch.no_grad():
                 iteration_loss = torch.tensor([self.loss(batch[0].to(device)) for i, batch in enumerate(dataloader)]).mean().item()
-            if iteration_loss < best_loss:
-                best_loss = iteration_loss
-                best_parameters = self.state_dict()
             self.loss_values.append(iteration_loss)
-            pbar.set_postfix_str('current loss = ' + str(round(iteration_loss,6)) + ', best loss = ' + str(round(best_loss,6)))
+            pbar.set_postfix_str('current loss = ' + str(round(iteration_loss,6)))
         self.to(torch.device('cpu'))
-        self.load_state_dict(best_parameters)
