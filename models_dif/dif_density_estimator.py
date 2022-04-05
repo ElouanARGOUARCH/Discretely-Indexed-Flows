@@ -55,7 +55,7 @@ class DIFDensityEstimator(nn.Module):
         self.para_list = list(self.parameters())
 
         best_parameters = self.state_dict()
-        best_loss = loss_values[0]
+        best_loss = self.loss_values[0]
 
         self.optimizer = torch.optim.Adam(self.para_list, lr=5e-3)
         if batch_size is None:
