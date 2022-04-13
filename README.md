@@ -2,7 +2,7 @@
 
 ![Discretely Indexed Flows](cover_readme.png "Title")
 
-## models_dif Librabry
+## models_dif Library
 
 ### Installation 
 
