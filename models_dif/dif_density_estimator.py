@@ -47,6 +47,9 @@ class DIFDensityEstimator(nn.Module):
             pick = Categorical(torch.exp(self.w.log_prob(z))).sample()
             return torch.stack([x[i,pick[i],:] for i in range(z.shape[0])])
 
+    def model_likelihood(self, samples):
+        return torch.sum(self.log_density(samples))
+
     def loss(self, batch):
         z = self.T.forward(batch)
         return -torch.mean(torch.logsumexp(self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.T.log_det_J(batch), dim=-1))
