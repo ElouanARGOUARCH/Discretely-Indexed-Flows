@@ -19,7 +19,10 @@ class TMC(nn.Module):
         self.T = LocationScaleFlow(self.K, self.p)
 
         self.reference = MultivariateNormalReference(self.p)
+
         self.loss_values = []
+        self.para_list = list(self.parameters())
+        self.optimizer = torch.optim.Adam(self.para_list, lr=5e-3)
 
     def compute_log_w(self, z):
         x = self.T.backward(z)
@@ -49,11 +52,6 @@ class TMC(nn.Module):
         return torch.logsumexp(torch.diagonal(self.v.log_prob(x), 0, -2, -1) + self.target_log_density(x) - self.T.log_det_J(z), dim=-1)
 
     def train(self, epochs,num_samples, batch_size=None):
-
-        self.para_list = list(self.parameters())
-
-        self.optimizer = torch.optim.Adam(self.para_list, lr=5e-3)
-
         if batch_size is None:
             batch_size = num_samples
 
@@ -78,6 +76,6 @@ class TMC(nn.Module):
                 DKL_latent_values = torch.tensor(
                     [self.DKL_latent(batch[0].to(device)) for i, batch in enumerate(dataloader)]).mean().item()
             self.loss_values.append(DKL_latent_values)
-            pbar.set_postfix_str('DKL observed = ' + str(round(DKL_observed_values, 6)) + ' DKL Latent = ' + str(round(DKL_latent_values, 6)))
+            pbar.set_postfix_str('DKL observed = ' + str(round(DKL_observed_values, 6)) + ' DKL Latent = ' + str(round(DKL_latent_values, 6)) + ' ; device: ' + 'cuda' if torch.cuda.is_available() else 'cpu')
         self.to(torch.device('cpu'))
 
