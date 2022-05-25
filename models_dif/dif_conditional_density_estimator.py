@@ -49,7 +49,6 @@ class ConditionalLocationScale(nn.Module):
         X = x.unsqueeze(-2).expand(desired_size)
         new_desired_size = desired_size
         new_desired_size[-1] = 2*self.p
-        out = torch.reshape(self.f(theta), new_desired_size)
         log_s = torch.reshape(self.f(theta), new_desired_size)[..., self.p:]
         return -log_s.sum(-1)
 
@@ -96,7 +95,6 @@ class ConditionalDIFDensityEstimator(nn.Module):
         theta_unsqueezed = theta.unsqueeze(-2).expand(desired_size)
         with torch.no_grad():
             z = self.T.forward(x, theta)
-            print(z.shape)
             return torch.logsumexp(self.reference.log_density(z) + torch.diagonal(self.w.log_prob(torch.cat([z, theta_unsqueezed], dim = -1)), 0, -2, -1)+ self.T.log_det_J(x, theta),dim=-1)
 
     def sample_model(self, theta):
