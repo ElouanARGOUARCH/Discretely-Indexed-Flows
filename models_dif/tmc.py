@@ -37,11 +37,10 @@ class TMC(nn.Module):
         return torch.mean(self.reference.log_density(z) - self.proxy_log_density(z))
 
     def sample_model(self, num_samples):
-        with torch.no_grad():
-            z = self.reference.sample(num_samples)
-            x = self.T.backward(z)
-            pick = Categorical(torch.exp(self.compute_log_w(z))).sample()
-            return torch.stack([x[i, pick[i], :] for i in range(num_samples)])
+        z = self.reference.sample(num_samples)
+        x = self.T.backward(z)
+        pick = Categorical(torch.exp(self.compute_log_w(z))).sample()
+        return torch.stack([x[i, pick[i], :] for i in range(num_samples)])
 
     def model_log_density(self, x):
         z = self.T.forward(x)

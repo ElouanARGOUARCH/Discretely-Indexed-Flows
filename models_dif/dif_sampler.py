@@ -24,8 +24,6 @@ class DIFSampler(nn.Module):
         self.para_list = list(self.parameters())
         self.optimizer = torch.optim.Adam(self.para_list, lr=5e-3)
 
-
-
     def compute_log_v(self, x):
         z = self.T.forward(x)
         log_v = self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.T.log_det_J(x)
@@ -39,11 +37,10 @@ class DIFSampler(nn.Module):
         return torch.mean(self.reference.log_density(z) - self.proxy_log_density(z))
 
     def sample_model(self, num_samples):
-        with torch.no_grad():
-            z = self.reference.sample(num_samples)
-            x = self.T.backward(z)
-            pick = Categorical(torch.exp(self.w.log_prob(z))).sample()
-            return torch.stack([x[i, pick[i], :] for i in range(num_samples)])
+        z = self.reference.sample(num_samples)
+        x = self.T.backward(z)
+        pick = Categorical(torch.exp(self.w.log_prob(z))).sample()
+        return torch.stack([x[i, pick[i], :] for i in range(num_samples)])
 
     def proxy_log_density(self, z):
         x = self.T.backward(z)

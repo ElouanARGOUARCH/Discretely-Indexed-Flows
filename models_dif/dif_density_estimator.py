@@ -26,28 +26,24 @@ class DIFDensityEstimator(nn.Module):
         self.optimizer = torch.optim.Adam(self.para_list, lr=5e-3)
 
     def compute_log_v(self,x):
-        with torch.no_grad():
-            z = self.T.forward(x)
-            log_v = self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.T.log_det_J(x)
-            return log_v - torch.logsumexp(log_v, dim = -1, keepdim= True)
+        z = self.T.forward(x)
+        log_v = self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.T.log_det_J(x)
+        return log_v - torch.logsumexp(log_v, dim = -1, keepdim= True)
 
     def sample_latent(self,x):
-        with torch.no_grad():
-            z = self.T.forward(x)
-            pick = Categorical(torch.exp(self.compute_log_v(x))).sample()
-            return torch.stack([z[i,pick[i],:] for i in range(x.shape[0])])
+        z = self.T.forward(x)
+        pick = Categorical(torch.exp(self.compute_log_v(x))).sample()
+        return torch.stack([z[i,pick[i],:] for i in range(x.shape[0])])
 
     def log_density(self, x):
-        with torch.no_grad():
-            z = self.T.forward(x)
-            return torch.logsumexp(self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z),0,-2,-1) + self.T.log_det_J(x),dim=-1)
+        z = self.T.forward(x)
+        return torch.logsumexp(self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z),0,-2,-1) + self.T.log_det_J(x),dim=-1)
 
     def sample_model(self, num_samples):
-        with torch.no_grad():
-            z = self.reference.sample(num_samples)
-            x = self.T.backward(z)
-            pick = Categorical(torch.exp(self.w.log_prob(z))).sample()
-            return torch.stack([x[i,pick[i],:] for i in range(z.shape[0])])
+        z = self.reference.sample(num_samples)
+        x = self.T.backward(z)
+        pick = Categorical(torch.exp(self.w.log_prob(z))).sample()
+        return torch.stack([x[i,pick[i],:] for i in range(z.shape[0])])
 
     def loss(self, batch):
         z = self.T.forward(batch)
