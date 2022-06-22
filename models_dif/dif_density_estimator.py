@@ -23,7 +23,7 @@ class DIFDensityEstimator(nn.Module):
 
         self.loss_values = []
         self.para_list = list(self.parameters())
-        self.optimizer = torch.optim.Adam(self.para_list, lr=5e-2)
+        self.optimizer = torch.optim.Adam(self.para_list, lr=5e-3)
 
     def compute_log_v(self,x):
         z = self.T.forward(x)
