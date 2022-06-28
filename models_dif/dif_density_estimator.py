@@ -23,7 +23,7 @@ class DIFDensityEstimator(nn.Module):
 
         self.loss_values = []
         self.para_list = list(self.parameters())
-        self.optimizer = torch.optim.Adam(self.para_list, lr=5e-2)
+        self.optimizer = torch.optim.Adam(self.para_list, lr=5e-3)
 
     def compute_log_v(self,x):
         z = self.T.forward(x)
@@ -33,7 +33,7 @@ class DIFDensityEstimator(nn.Module):
     def sample_latent(self,x):
         z = self.T.forward(x)
         pick = Categorical(torch.exp(self.compute_log_v(x))).sample()
-        return torch.stack([z[i,pick[i],:] for i in range(x.shape[0])])
+        return z[range(z.shape[0]), pick, :]
 
     def log_density(self, x):
         z = self.T.forward(x)
@@ -43,7 +43,7 @@ class DIFDensityEstimator(nn.Module):
         z = self.reference.sample(num_samples)
         x = self.T.backward(z)
         pick = Categorical(torch.exp(self.w.log_prob(z))).sample()
-        return torch.stack([x[i,pick[i],:] for i in range(z.shape[0])])
+        return x[range(x.shape[0]), pick, :]
 
     def loss(self, batch):
         z = self.T.forward(batch)

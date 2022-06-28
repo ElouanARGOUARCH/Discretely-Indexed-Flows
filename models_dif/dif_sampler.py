@@ -40,7 +40,7 @@ class DIFSampler(nn.Module):
         z = self.reference.sample(num_samples)
         x = self.T.backward(z)
         pick = Categorical(torch.exp(self.w.log_prob(z))).sample()
-        return torch.stack([x[i, pick[i], :] for i in range(num_samples)])
+        return x[range(x.shape[0]), pick, :]
 
     def proxy_log_density(self, z):
         x = self.T.backward(z)
@@ -77,7 +77,7 @@ class DIFSampler(nn.Module):
                     [self.DKL_latent(batch[0].to(device)) for i, batch in enumerate(dataloader)]).mean().item()
             self.loss_values.append(DKL_latent_values)
             pbar.set_postfix_str('DKL observed = ' + str(round(DKL_observed_values, 6)) + ' DKL Latent = ' + str(
-                round(DKL_latent_values, 6)) + ' ; device: ' + 'cuda' if torch.cuda.is_available() else 'cpu')
+                round(DKL_latent_values, 6)) + ' ; device: ' + str(device))
         self.to(torch.device('cpu'))
 
 

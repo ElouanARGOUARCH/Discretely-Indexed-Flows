@@ -76,17 +76,15 @@ class ConditionalDIFDensityEstimator(nn.Module):
     def compute_log_v(self,x, theta):
         assert x.shape[:-1] == theta.shape[:-1], 'wrong shapes'
         theta_unsqueezed = theta.unsqueeze(-2).repeat(1, self.K, 1)
-        with torch.no_grad():
-            z = self.T.forward(x, theta)
-            log_v = self.reference.log_density(z) + torch.diagonal(self.w.log_prob(torch.cat([z, theta_unsqueezed], dim = -1)), 0, -2, -1) + self.T.log_det_J(x, theta)
-            return log_v - torch.logsumexp(log_v, dim = -1, keepdim= True)
+        z = self.T.forward(x, theta)
+        log_v = self.reference.log_density(z) + torch.diagonal(self.w.log_prob(torch.cat([z, theta_unsqueezed], dim = -1)), 0, -2, -1) + self.T.log_det_J(x, theta)
+        return log_v - torch.logsumexp(log_v, dim = -1, keepdim= True)
 
     def sample_latent(self,x, theta):
         assert x.shape[:-1] == theta.shape[:-1], 'wrong shapes'
-        with torch.no_grad():
-            z = self.T.forward(x, theta)
-            pick = Categorical(torch.exp(self.compute_log_v(x, theta))).sample()
-            return torch.stack([z[i,pick[i],:] for i in range(x.shape[0])])
+        z = self.T.forward(x, theta)
+        pick = Categorical(torch.exp(self.compute_log_v(x, theta))).sample()
+        return z[range(z.shape[0]), pick, :]
 
     def log_density(self, x, theta):
         assert x.shape[:-1] == theta.shape[:-1], 'wrong shapes'
@@ -97,11 +95,11 @@ class ConditionalDIFDensityEstimator(nn.Module):
         return torch.logsumexp(self.reference.log_density(z) + torch.diagonal(self.w.log_prob(torch.cat([z, theta_unsqueezed], dim = -1)), 0, -2, -1)+ self.T.log_det_J(x, theta),dim=-1)
 
     def sample_model(self, theta):
-        with torch.no_grad():
-            z = self.reference.sample(theta.shape[0])
-            x = self.T.backward(z, theta)
-            pick = Categorical(torch.exp(self.w.log_prob(torch.cat([z, theta], dim = -1)))).sample()
-            return torch.stack([x[i,pick[i],:] for i in range(z.shape[0])])
+        z = self.reference.sample(theta.shape[0])
+        x = self.T.backward(z, theta)
+        pick = Categorical(torch.exp(self.w.log_prob(torch.cat([z, theta], dim = -1)))).sample()
+        return x[range(x.shape[0]), pick, :]
+        #return torch.stack([x[i,pick[i],:] for i in range(z.shape[0])])
 
     def loss(self, batch_x, batch_theta):
         batch_theta_unsqueezed = batch_theta.unsqueeze(-2).repeat(1, self.K, 1)
@@ -128,5 +126,5 @@ class ConditionalDIFDensityEstimator(nn.Module):
             with torch.no_grad():
                 iteration_loss = torch.tensor([self.loss(batch[0].to(device), batch[1].to(device)) for i, batch in enumerate(dataloader)]).mean().item()
             self.loss_values.append(iteration_loss)
-            pbar.set_postfix_str('loss = ' + str(round(iteration_loss,6)) + ' ; device: ' + 'cuda' if torch.cuda.is_available() else 'loss = ' + str(round(iteration_loss,6)) + ' ; device: ' + 'cpu')
+            pbar.set_postfix_str('loss = ' + str(round(iteration_loss,6)) + ' ; device: ' + str(device))
         self.to(torch.device('cpu'))
