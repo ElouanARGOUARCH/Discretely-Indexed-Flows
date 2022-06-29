@@ -32,7 +32,7 @@ for i in range(number_runs):
     K = linspace_x * linspace_y
     EM = EMDensityEstimator(target_samples,K)
     EM.m = torch.cartesian_prod(torch.linspace(0, lignes,linspace_x),torch.linspace(0, colonnes, linspace_y))
-    EM.train(1)
+    EM.train(200)
 
     #Run DIF
     initial_T = LocationScaleFlow(K,2)
@@ -47,7 +47,7 @@ for i in range(number_runs):
     dif.T = initial_T
     dif.w = initial_w
 
-    epochs = 1
+    epochs = 1000
     batch_size = 30000
     dif.train(epochs, batch_size)
 

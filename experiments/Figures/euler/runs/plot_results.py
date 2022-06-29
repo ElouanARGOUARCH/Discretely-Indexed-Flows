@@ -3,14 +3,14 @@ import numpy
 import matplotlib.pyplot as plt
 lines = 256
 columns = 197
-number_runs = 1
+number_runs = 10
 for i in range(number_runs):
     filename = 'euler_dif' + str(i) + '.sav'
     dif = torch.load(filename)
     with torch.no_grad():
-        grid = torch.cartesian_prod(torch.linspace(0, lines, 2 * lines), torch.linspace(0, columns, 2 * columns))
-        density = torch.exp(dif.log_density(grid)).reshape(2 * lines, 2 * columns).T
-        figure = plt.figure(figsize=(25, 8))
+        grid = torch.cartesian_prod(torch.linspace(0, lines, lines), torch.linspace(0, columns, columns))
+        density = torch.exp(dif.log_density(grid)).reshape(lines, columns).T
+        figure = plt.figure(figsize=(12, 8))
         ax = figure.add_subplot(121)
         ax.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
         ax.imshow(torch.flip(torch.flip(density.T, [0, 1]), [0, 1]), extent=[0, columns, 0, lines])
@@ -21,4 +21,5 @@ for i in range(number_runs):
         ax.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
         ax.imshow(torch.flip(torch.flip(torch.tensor(hist_dif_samples).T, [0, 1]), [0, 1]),
                    extent=[0, columns, 0, lines])
-        plt.show()
+        filename_png = 'euler_dif' + str(i) + '.png'
+        figure.savefig(filename_png)
