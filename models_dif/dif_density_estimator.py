@@ -69,5 +69,5 @@ class DIFDensityEstimator(nn.Module):
             with torch.no_grad():
                 iteration_loss = torch.tensor([self.loss(batch[0].to(device)) for i, batch in enumerate(dataloader)]).mean().item()
             self.loss_values.append(iteration_loss)
-            pbar.set_postfix_str('loss = ' + str(round(iteration_loss,6)) + ' ; device: ' + 'cuda' if torch.cuda.is_available() else 'cpu')
+            pbar.set_postfix_str('loss = ' + str(round(iteration_loss,6)) + ' ; device: ' + str(device))
         self.to(torch.device('cpu'))
