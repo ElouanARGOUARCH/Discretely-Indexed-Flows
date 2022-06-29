@@ -70,8 +70,6 @@ class ConditionalDIFDensityEstimator(nn.Module):
         self.T = ConditionalLocationScale(self.K, self.p, self.d, hidden_dimensions)
 
         self.loss_values = []
-        self.para_list = list(self.parameters())
-        self.optimizer = torch.optim.Adam(self.para_list, lr=5e-3)
 
     def compute_log_v(self,x, theta):
         assert x.shape[:-1] == theta.shape[:-1], 'wrong shapes'
@@ -107,6 +105,10 @@ class ConditionalDIFDensityEstimator(nn.Module):
         return -torch.mean(torch.logsumexp(self.reference.log_density(z) + torch.diagonal(self.w.log_prob(torch.cat([z, batch_theta_unsqueezed], dim = -1)), 0, -2, -1) + self.T.log_det_J(batch_x, batch_theta), dim=-1))
 
     def train(self, epochs, batch_size = None):
+
+        self.para_list = list(self.parameters())
+        self.optimizer = torch.optim.Adam(self.para_list, lr=5e-3)
+
         if batch_size is None:
             batch_size = self.x_samples.shape[0]
         dataset = torch.utils.data.TensorDataset(self.x_samples, self.theta_samples)

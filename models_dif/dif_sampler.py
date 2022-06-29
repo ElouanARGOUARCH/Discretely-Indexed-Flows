@@ -21,8 +21,6 @@ class DIFSampler(nn.Module):
         self.reference = MultivariateNormalReference(self.p)
 
         self.loss_values = []
-        self.para_list = list(self.parameters())
-        self.optimizer = torch.optim.Adam(self.para_list, lr=5e-3)
 
     def compute_log_v(self, x):
         z = self.T.forward(x)
@@ -52,6 +50,8 @@ class DIFSampler(nn.Module):
             dim=-1)
 
     def train(self, epochs,num_samples, batch_size=None):
+        self.para_list = list(self.parameters())
+        self.optimizer = torch.optim.Adam(self.para_list, lr=5e-3)
         if batch_size is None:
             batch_size = num_samples
 

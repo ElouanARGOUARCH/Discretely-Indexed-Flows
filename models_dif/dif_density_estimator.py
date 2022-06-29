@@ -22,8 +22,6 @@ class DIFDensityEstimator(nn.Module):
         self.T.m = nn.Parameter(self.target_samples[torch.randint(low= 0, high = self.target_samples.shape[0],size = [self.K])])
 
         self.loss_values = []
-        self.para_list = list(self.parameters())
-        self.optimizer = torch.optim.Adam(self.para_list, lr=5e-3)
 
     def compute_log_v(self,x):
         z = self.T.forward(x)
@@ -50,6 +48,10 @@ class DIFDensityEstimator(nn.Module):
         return -torch.mean(torch.logsumexp(self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.T.log_det_J(batch), dim=-1))
 
     def train(self, epochs, batch_size = None):
+
+        self.para_list = list(self.parameters())
+        self.optimizer = torch.optim.Adam(self.para_list, lr=5e-3)
+
         if batch_size is None:
             batch_size = self.target_samples.shape[0]
         dataset = torch.utils.data.TensorDataset(self.target_samples)
