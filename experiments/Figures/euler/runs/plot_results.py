@@ -6,7 +6,8 @@ columns = 197
 number_runs = 10
 for i in range(number_runs):
     filename = 'euler_dif' + str(i) + '.sav'
-    dif = torch.load(filename)
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    dif = torch.load(filename,map_location=torch.device(device))
     with torch.no_grad():
         grid = torch.cartesian_prod(torch.linspace(0, lines, lines), torch.linspace(0, columns, columns))
         density = torch.exp(dif.log_density(grid)).reshape(lines, columns).T

@@ -23,6 +23,9 @@ class DIFDensityEstimator(nn.Module):
 
         self.loss_values = []
 
+    def compute_number_params(self):
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
     def compute_log_v(self,x):
         z = self.T.forward(x)
         log_v = self.reference.log_density(z) + torch.diagonal(self.w.log_prob(z), 0, -2, -1) + self.T.log_det_J(x)
