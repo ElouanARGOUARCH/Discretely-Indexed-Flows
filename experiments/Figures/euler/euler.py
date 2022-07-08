@@ -24,14 +24,14 @@ for i in range(number_runs):
     num_samples = 300000
     cat = torch.distributions.Categorical(probs = vector_density)
     categorical_samples = cat.sample([num_samples])
-    target_samples = torch.cat([(categorical_samples//colonnes).unsqueeze(-1), (categorical_samples%colonnes).unsqueeze(-1)], dim = -1) + torch.rand([num_samples,2])
+    target_samples = torch.cat([((categorical_samples // columns + torch.rand(num_samples)) / lines).unsqueeze(-1),((categorical_samples % columns + torch.rand(num_samples)) / columns).unsqueeze(-1)],dim=-1)
 
     #Run EM
     linspace_x = 7
     linspace_y = 7
     K = linspace_x * linspace_y
     EM = EMDensityEstimator(target_samples,K)
-    EM.m = torch.cartesian_prod(torch.linspace(0, lignes,linspace_x),torch.linspace(0, colonnes, linspace_y))
+    EM.m = torch.cartesian_prod(torch.linspace(0, 1,linspace_x),torch.linspace(0, 1, linspace_y))
     EM.train(200)
 
     #Run DIF
@@ -47,7 +47,7 @@ for i in range(number_runs):
     dif.T = initial_T
     dif.w = initial_w
 
-    epochs = 1000
+    epochs = 10000
     batch_size = 30000
     dif.train(epochs, batch_size)
 
