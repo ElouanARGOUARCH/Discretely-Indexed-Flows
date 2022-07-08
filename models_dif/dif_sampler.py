@@ -51,7 +51,7 @@ class DIFSampler(nn.Module):
 
     def train(self, epochs,num_samples, batch_size=None):
         self.para_list = list(self.parameters())
-        self.optimizer = torch.optim.Adam(self.para_list, lr=5e-3)
+        self.optimizer = torch.optim.Adam(self.para_list, lr=5e-3, weight_decay= 5e-5)
         if batch_size is None:
             batch_size = num_samples
 
