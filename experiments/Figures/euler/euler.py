@@ -10,7 +10,6 @@ from models_dif import DIFDensityEstimator, LocationScaleFlow, SoftmaxWeight
 from models_em import EMDensityEstimator
 
 rgb = image.imread("euler.jpg")
-lines, columns = rgb.shape[:-1]
 def rgb2gray(rgb):
     return np.dot(rgb[...,:3], [0.2989, 0.5870, 0.1140])
 grey = torch.tensor(rgb2gray(rgb))
@@ -19,7 +18,7 @@ for i in range(number_runs):
     #Sample data according to image
     vector_density = grey.flatten()
     vector_density = vector_density/torch.sum(vector_density)
-    lignes, colonnes = grey.shape
+    lines, columns = grey.shape
 
     num_samples = 300000
     cat = torch.distributions.Categorical(probs = vector_density)
