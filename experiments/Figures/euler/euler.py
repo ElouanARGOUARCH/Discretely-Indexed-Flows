@@ -47,7 +47,7 @@ for i in range(number_runs):
     dif.T = initial_T
     dif.w = initial_w
 
-    epochs = 10000
+    epochs = 1000
     batch_size = 30000
     dif.train(epochs, batch_size)
 
