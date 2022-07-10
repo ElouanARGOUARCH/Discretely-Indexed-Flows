@@ -14,7 +14,7 @@ def rgb2gray(rgb):
     return np.dot(rgb[...,:3], [0.2989, 0.5870, 0.1140])
 grey = torch.tensor(rgb2gray(rgb))
 
-for i in range(number_runs):
+for i in range(10,10+number_runs):
     #Sample data according to image
     vector_density = grey.flatten()
     vector_density = vector_density/torch.sum(vector_density)
