@@ -3,7 +3,7 @@ import numpy
 import matplotlib.pyplot as plt
 lines = 256
 columns = 197
-number_runs = 10
+number_runs = 20
 for i in range(number_runs):
     filename = 'euler_dif' + str(i) + '.sav'
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
