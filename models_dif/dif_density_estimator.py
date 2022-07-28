@@ -20,7 +20,7 @@ class DIFDensityEstimator(nn.Module):
 
         self.T = LocationScaleFlow(self.K, self.p)
         self.T.m = nn.Parameter(self.target_samples[torch.randint(low= 0, high = self.target_samples.shape[0],size = [self.K])])
-        self.T.log_s = nn.Parameter(torch.log(torch.var(self.target_samples, dim = 0).unsqueeze(0).repeat(self.K,1)))
+        self.T.log_s = nn.Parameter(torch.log(torch.var(self.target_samples, dim = 0).unsqueeze(0).repeat(self.K,1))/2)
 
         self.loss_values = []
 
