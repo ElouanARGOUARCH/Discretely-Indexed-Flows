@@ -8,7 +8,7 @@ from models_dif.location_scale_flow import LocationScaleFlow
 from models_dif.softmax_weight import SoftmaxWeight
 
 class DIFDensityEstimator(nn.Module):
-    def __init__(self, target_samples, K):
+    def __init__(self, target_samples, K, lr = 1e-4, weight_decay = 1e-6):
         super().__init__()
         self.target_samples = target_samples
         self.p = self.target_samples.shape[-1]
@@ -22,6 +22,8 @@ class DIFDensityEstimator(nn.Module):
         self.T.m = nn.Parameter(self.target_samples[torch.randint(low= 0, high = self.target_samples.shape[0],size = [self.K])])
         self.T.log_s = nn.Parameter(torch.log(torch.var(self.target_samples, dim = 0).unsqueeze(0).repeat(self.K,1) + 1e-6 *torch.ones(self.K, self.p))/2)
 
+        self.lr = lr
+        self.weight_decay = weight_decay
         self.loss_values = []
 
     def compute_number_params(self):
@@ -54,7 +56,7 @@ class DIFDensityEstimator(nn.Module):
     def train(self, epochs, batch_size = None):
 
         self.para_list = list(self.parameters())
-        self.optimizer = torch.optim.Adam(self.para_list, lr=5e-3, weight_decay=5e-5)
+        self.optimizer = torch.optim.Adam(self.para_list, lr=self.lr, weight_decay=self.weight_decay)
 
         if batch_size is None:
             batch_size = self.target_samples.shape[0]
