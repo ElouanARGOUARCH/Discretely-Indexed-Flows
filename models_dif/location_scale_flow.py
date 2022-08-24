@@ -33,8 +33,6 @@ class FullRankLocationScaleFlow(nn.Module):
 
         self.chol = torch.eye(self.p).unsqueeze(0).repeat(self.K, 1,1)
 
-        self.to(self.device)
-
     def backward(self, z):
         desired_size_Z_M = list(z.shape)
         desired_size_Z_M.insert(-1, self.K)
