@@ -15,6 +15,7 @@ class DIFDensityEstimator(nn.Module):
         self.K = K
 
         self.reference = MultivariateNormalReference(self.p)
+        self.reference.estimate_moments(self.target_samples)
 
         self.w = SoftmaxWeight(self.K, self.p, [])
 
