@@ -20,15 +20,3 @@ p = target_samples.shape[-1]
 
 K = 5
 model = DIFDensityEstimator(target_samples, K)
-model.reference.cov += 1e-3*torch.eye(p)
-initial_w = SoftmaxWeight(K, p, [512,512,256,256,128,128])
-initial_w.f[-1].bias = torch.nn.Parameter(torch.ones(K)/K)
-initial_w.f[-1].weight = torch.nn.Parameter(torch.zeros(K,initial_w.network_dimensions[-2]))
-initial_T = LocationScaleFlow(K,p)
-initial_T.m = torch.nn.Parameter(torch.zeros(K,p) + 0.1*torch.randn(K,p))
-initial_T.log_s = torch.nn.Parameter(torch.zeros(K,p))
-model.w = initial_w
-model.T = initial_T
-model.train(1000,6000)
-filename = 'dif_mnist_second_model.sav'
-torch.save(model, filename)
