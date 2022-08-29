@@ -1,5 +1,5 @@
 import torch
-from models_dif import SoftmaxWeight, DIFDensityEstimator, LocationScaleFlow
+from models_dif import DIFDensityEstimator
 
 ###MNIST###
 
