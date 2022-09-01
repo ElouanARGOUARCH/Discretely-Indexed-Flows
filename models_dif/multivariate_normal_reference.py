@@ -12,7 +12,7 @@ class MultivariateNormalReference(nn.Module):
     def estimate_moments(self, samples):
         self.mean = torch.mean(samples, dim = 0)
         self.cov = torch.cov(samples.T)
-        self.distribution = torch.distributions.MultivariateNormal(self.mean, self.cov)
+        self.distribution = torch.distributions.MultivariateNormal(self.mean, (self.cov+self.cov.T)/2)
 
     def sample(self, num_samples):
         return self.distribution.sample([num_samples])
