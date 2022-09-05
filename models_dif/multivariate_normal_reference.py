@@ -20,7 +20,8 @@ class MultivariateNormalReference(nn.Module):
         #return torch.randn([num_samples, self.p])
 
     def log_density(self, z):
-        print(z.device)
-        distribution = torch.distributions.MultivariateNormal(self.mean.to(z.device), self.cov.to(z.device))
+        mean = self.mean.to(z.device)
+        cov = self.cov.to(z.device)
+        self.distribution = torch.distributions.MultivariateNormal(mean,cov)
         return self.distribution.log_prob(z)
         #return -torch.sum(torch.square(z)/2, dim = -1) - torch.log(torch.tensor([2*torch.pi], device = z.device))*self.p/2
