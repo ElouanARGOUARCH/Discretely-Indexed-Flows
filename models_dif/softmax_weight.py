@@ -21,6 +21,8 @@ class SoftmaxWeight(nn.Module):
 class ConvNetWeight(nn.Module):
     def __init__(self, K, p):
         super(ConvNetWeight, self).__init__()
+        self.K = K
+        self.p = p
         self.conv1 = nn.Conv2d(1, 32, 3, 1)
         self.conv2 = nn.Conv2d(32, 64, 3, 1)
         self.dropout1 = nn.Dropout2d(0.25)
@@ -52,5 +54,15 @@ class ConvNetWeight(nn.Module):
         return x
 
     def log_prob(self, z):
-        unormalized_log_w = self.forward(z.view(z.shape[0],1,28,28))
+        old_shape = list(z.shape)
+        if len(old_shape) == 3:
+            shape = [old_shape[0]*old_shape[1]]
+        elif len(old_shape) == 2:
+            shape = [old_shape[0]]
+        shape.append(1)
+        shape.append(28)
+        shape.append(28)
+        print(shape)
+        old_shape[-1] = self.K
+        unormalized_log_w = self.forward(z.view(shape)).reshape(old_shape)
         return unormalized_log_w - torch.logsumexp(unormalized_log_w, dim=-1, keepdim=True)
