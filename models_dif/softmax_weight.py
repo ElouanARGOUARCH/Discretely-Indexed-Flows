@@ -62,7 +62,6 @@ class ConvNetWeight(nn.Module):
         shape.append(1)
         shape.append(28)
         shape.append(28)
-        print(shape)
         old_shape[-1] = self.K
         unormalized_log_w = self.forward(z.view(shape)).reshape(old_shape)
         return unormalized_log_w - torch.logsumexp(unormalized_log_w, dim=-1, keepdim=True)
