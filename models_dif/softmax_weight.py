@@ -19,39 +19,38 @@ class SoftmaxWeight(nn.Module):
         return unormalized_log_w - torch.logsumexp(unormalized_log_w, dim=-1, keepdim=True)
 
 class ConvNetWeight(nn.Module):
-    class Net(nn.Module):
-        def __init__(self):
-            super(Net, self).__init__()
-            self.conv1 = nn.Conv2d(1, 32, 3, 1)
-            self.conv2 = nn.Conv2d(32, 64, 3, 1)
-            self.dropout1 = nn.Dropout2d(0.25)
-            self.dropout2 = nn.Dropout2d(0.5)
-            self.fc1 = nn.Linear(9216, 128)
-            self.fc2 = nn.Linear(128, 10)
+    def __init__(self, K, p):
+        super(ConvNetWeight, self).__init__()
+        self.conv1 = nn.Conv2d(1, 32, 3, 1)
+        self.conv2 = nn.Conv2d(32, 64, 3, 1)
+        self.dropout1 = nn.Dropout2d(0.25)
+        self.dropout2 = nn.Dropout2d(0.5)
+        self.fc1 = nn.Linear(9216, 128)
+        self.fc2 = nn.Linear(128, K)
 
         # x represents our data
-        def forward(self, x):
-            # Pass data through conv1
-            x = self.conv1(x)
-            # Use the rectified-linear activation function over x
-            x = F.relu(x)
+    def forward(self, x):
+        # Pass data through conv1
+        x = self.conv1(x)
+        # Use the rectified-linear activation function over x
+        x = F.relu(x)
 
-            x = self.conv2(x)
-            x = F.relu(x)
+        x = self.conv2(x)
+        x = F.relu(x)
 
-            # Run max pooling over x
-            x = F.max_pool2d(x, 2)
-            # Pass data through dropout1
-            x = self.dropout1(x)
-            # Flatten x with start_dim=1
-            x = torch.flatten(x, 1)
-            # Pass data through fc1
-            x = self.fc1(x)
-            x = F.relu(x)
-            x = self.dropout2(x)
-            x = self.fc2(x)
-            return x
+        # Run max pooling over x
+        x = F.max_pool2d(x, 2)
+        # Pass data through dropout1
+        x = self.dropout1(x)
+        # Flatten x with start_dim=1
+        x = torch.flatten(x, 1)
+        # Pass data through fc1
+        x = self.fc1(x)
+        x = F.relu(x)
+        x = self.dropout2(x)
+        x = self.fc2(x)
+        return x
 
-        def log_prob(self, z):
-            unormalized_log_w = self.f.forward(z)
-            return unormalized_log_w - torch.logsumexp(unormalized_log_w, dim=-1, keepdim=True)
+    def log_prob(self, z):
+        unormalized_log_w = self.forward(z.view(z.shape[0],1,28,28))
+        return unormalized_log_w - torch.logsumexp(unormalized_log_w, dim=-1, keepdim=True)
