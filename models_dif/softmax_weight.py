@@ -2,6 +2,18 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
+class ConstantWeight(nn.Module):
+    def __init__(self, K, p):
+        super(ConstantWeight, self).__init__()
+        self.K = K
+        self.p = p
+        self.log_weight = torch.log(torch.ones(self.K)/self.K)
+
+    def log_prob(self,z):
+        shape = z.shape[:-1]
+        temp = self.log_weight - torch.logsumexp(self.log_weight, dim = -1)
+        return torch.reshape(temp, shape)
+
 class SoftmaxWeight(nn.Module):
     def __init__(self, K, p, hidden_dimensions =[]):
         super().__init__()
