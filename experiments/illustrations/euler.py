@@ -4,7 +4,6 @@ import matplotlib
 import numpy
 import matplotlib.pyplot as plt
 from models_dif import *
-from tqdm import tqdm
 
 class logit():
     def __init__(self, alpha = 1e-2):
@@ -73,101 +72,18 @@ class GreyScale2DImageDistribution():
         vector_density = self.grey.flatten()
         #normalize weights
         vector_density = vector_density / torch.sum(vector_density)
-        num_samples = 500000
         #samples component assignation
-        cat = torch.distributions.Categorical(probs=vector_density)
-        categorical_samples = cat.sample([num_samples])
+        categorical_samples = torch.distributions.Categorical(probs=vector_density).sample(num_samples)
         return torch.cat([((categorical_samples % self.columns + torch.rand(num_samples)) / self.columns).unsqueeze(-1),
                                     (
                                     (1 - (categorical_samples // self.columns + torch.rand(num_samples)) / self.lines)).unsqueeze(
                                         -1)], dim=-1)
 
-class DiagGaussianMixtEM(torch.nn.Module):
-    def __init__(self,target_samples,K):
-        super().__init__()
-        self.target_samples = target_samples
-        self.p = self.target_samples.shape[-1]
-        self.K = K
-        self.log_pi = torch.log(torch.ones([self.K])/self.K)
-        self.m = self.target_samples[torch.randint(low= 0, high = self.target_samples.shape[0],size = [self.K])]
-        self.log_s = torch.log(torch.var(self.target_samples, dim = 0)).unsqueeze(0).repeat(self.K, 1)/2
-        self.reference= torch.distributions.MultivariateNormal(torch.zeros(self.p), torch.eye(self.p))
-        self.w = torch.distributions.Dirichlet(torch.ones(target_samples.shape[0])).sample()
-
-    def forward(self, x):
-        desired_size = list(x.shape)
-        desired_size.insert(-1, self.K)
-        X = x.unsqueeze(-2).expand(desired_size)
-        return (X - self.m.expand_as(X)) / torch.exp(self.log_s).expand_as(X)
-
-    def backward(self,z):
-        desired_size = list(z.shape)
-        desired_size.insert(-1, self.K)
-        Z = z.unsqueeze(-2).expand(desired_size)
-        return Z * torch.exp(self.log_s).expand_as(Z) + self.m.expand_as(Z)
-
-    def log_det_J(self,x):
-        return -torch.sum(self.log_s, dim = -1)
-
-    def compute_log_v(self,x):
-        z = self.forward(x)
-        unormalized_log_v = self.reference.log_prob(z) + self.log_pi.unsqueeze(0).repeat(x.shape[0],1)+ self.log_det_J(x)
-        return unormalized_log_v - torch.logsumexp(unormalized_log_v, dim = -1, keepdim= True)
-
-    def sample_latent(self,x, joint = False):
-        z = self.forward(x)
-        pick = torch.distributions.Categorical(torch.exp(self.compute_log_v(x))).sample()
-        if not joint:
-            return z[range(z.shape[0]), pick, :]
-        else:
-            return z[range(z.shape[0]), pick, :],pick
-
-    def log_prob(self, x):
-        z = self.forward(x)
-        return torch.logsumexp(self.reference.log_prob(z) + self.log_pi.unsqueeze(0).repeat(x.shape[0],1) + self.log_det_J(x),dim=-1)
-
-    def sample(self, num_samples, joint=False):
-        z = self.reference.sample(num_samples)
-        x = self.backward(z)
-        pick = torch.distributions.Categorical(torch.exp(self.log_pi.unsqueeze(0).repeat(x.shape[0],1))).sample()
-        if not joint:
-            return x[range(x.shape[0]), pick, :]
-        else:
-            return x[range(x.shape[0]), pick, :],pick
-
-    def M_step(self, x,w):
-        v = torch.exp(self.compute_log_v(x))*w.unsqueeze(-1)
-        c = torch.sum(v, dim=0)
-        self.log_pi = torch.log(c) - torch.logsumexp(torch.log(c), dim = 0)
-        self.m = torch.sum(v.unsqueeze(-1).repeat(1, 1, self.p) * x.unsqueeze(-2).repeat(1, self.K, 1),
-                                dim=0) / c.unsqueeze(-1)
-        temp2 = torch.square(x.unsqueeze(1).repeat(1,self.K, 1) - self.m.unsqueeze(0).repeat(x.shape[0],1,1))
-        self.log_s = torch.log(torch.sum(v.unsqueeze(-1).repeat(1, 1, self.p) * temp2,dim=0)/c.unsqueeze(-1))/2
-
-    def train(self, epochs, verbose = False, trace_loss = False):
-        if trace_loss:
-            loss_values = []
-        if verbose:
-            pbar = tqdm(range(epochs))
-        else:
-            pbar = range(epochs)
-        for t in pbar:
-            self.M_step(self.target_samples, self.w)
-            if verbose or trace_loss:
-                loss = -torch.sum(self.log_prob(self.target_samples) * self.w).item()
-            if verbose:
-                pbar.set_postfix_str('loss = ' + str(loss))
-            if trace_loss:
-                loss_values.append(loss)
-        if trace_loss:
-            return loss_values
-
-
 #Sample data according to image
 distribution = GreyScale2DImageDistribution("euler.jpg")
-distribution.plot_rgb()
-distribution.plot_grey()
-num_samples = 5000
+#distribution.plot_rgb()
+#distribution.plot_grey()
+num_samples = 50000
 target_samples = distribution.sample([num_samples])
 lines, columns = distribution.lines, distribution.columns
 
@@ -177,34 +93,28 @@ plt.tick_params(left = False, right = False , labelleft = False ,labelbottom = F
 plot_image_2d_points(target_samples, bins = (lines, columns))
 plt.show()
 
-
 #Apply logit transform to data - logit transforms is an invertible transformation which transforms bounded samples into unbounded samples
 #not necessary to run the code
 logit_transform = logit(alpha = 1e-2)
 transformed_samples = logit_transform.transform(target_samples)
+print(transformed_samples.shape)
 
 K = 50
-EM = DiagGaussianMixtEM(target_samples,K)
-EM.train(50, verbose= True)
+DIF = DIFDensityEstimator(transformed_samples,K, hidden_dims= [256,256,256])
+DIF.EM_pretraining(50, verbose= True)
 
-#display pdf after EM
+#display pdf after EM_pretraining
 fig = plt.figure(figsize =(8,12))
 plt.tick_params(left = False, right = False , labelleft = False ,labelbottom = False, bottom = False)
-plot_2d_function(lambda x: torch.exp(EM.log_prob(logit_transform.transform(x)).squeeze(-1) + logit_transform.log_det(x)), bins = (lines, columns), range =([[0.,1.],[0.,1.]]))
+plot_2d_function(lambda x: torch.exp(DIF.log_prob(logit_transform.transform(x)).squeeze(-1) + logit_transform.log_det(x)), bins = (lines, columns), range =([[0.,1.],[0.,1.]]))
 plt.show()
 
-initial_T = LocationScaleFlow(K,2)
-initial_T.m = torch.nn.Parameter(EM.m)
-initial_T.log_s = torch.nn.Parameter(EM.log_s)
+epochs = 100
+batch_size = 5000
+DIF.train(epochs, batch_size,lr = 1e-5, verbose = True)
 
-initial_w = SoftmaxWeight(K, 2, [128,128,128])
-initial_w.f[-1].bias = torch.nn.Parameter(EM.log_pi)
-initial_w.f[-1].weight = torch.nn.Parameter(torch.zeros(K,initial_w.network_dimensions[-2]))
-
-dif = DIFDensityEstimator(target_samples,K)
-dif.T = initial_T
-dif.w = initial_w
-
-epochs = 1000
-batch_size = 30000
-dif.train(epochs, batch_size)
+#display pdf after gradient descent training
+fig = plt.figure(figsize =(8,12))
+plt.tick_params(left = False, right = False , labelleft = False ,labelbottom = False, bottom = False)
+plot_2d_function(lambda x: torch.exp(DIF.log_prob(logit_transform.transform(x)).squeeze(-1) + logit_transform.log_det(x)), bins = (lines, columns), range =([[0.,1.],[0.,1.]]))
+plt.show()

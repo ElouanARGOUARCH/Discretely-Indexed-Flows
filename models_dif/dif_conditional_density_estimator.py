@@ -3,9 +3,8 @@ from torch import nn
 from torch.distributions import Categorical
 from tqdm import tqdm
 
-from models_dif.multivariate_normal_reference import MultivariateNormalReference
-from models_dif.location_scale_flow import LocationScaleFlow
-from models_dif.softmax_weight import SoftmaxWeight
+from models_dif.reference_distributions import MultivariateNormalReference
+from models_dif.weight_functions import SoftmaxWeight
 
 class ConditionalLocationScale(nn.Module):
     def __init__(self, K, p, d, hidden_dimensions):

@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-class LocationScaleFlow(nn.Module):
+class LocationScale(nn.Module):
     def __init__(self, K, p):
         super().__init__()
         self.K = K
