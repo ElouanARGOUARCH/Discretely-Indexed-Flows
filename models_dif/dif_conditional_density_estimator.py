@@ -3,7 +3,7 @@ from torch import nn
 from torch.distributions import Categorical
 from tqdm import tqdm
 
-from models_dif.reference_distributions import MultivariateNormalReference
+from models_dif.reference_distributions import GaussianReference, NormalReference
 from models_dif.weight_functions import SoftmaxWeight
 
 class ConditionalLocationScale(nn.Module):
@@ -74,7 +74,7 @@ class ConditionalDIFDensityEstimator(nn.Module):
         assert x.shape[:-1] == theta.shape[:-1], 'wrong shapes'
         theta_unsqueezed = theta.unsqueeze(-2).repeat(1, self.K, 1)
         z = self.T.forward(x, theta)
-        log_v = self.reference.log_density(z) + torch.diagonal(self.w.log_prob(torch.cat([z, theta_unsqueezed], dim = -1)), 0, -2, -1) + self.T.log_det_J(x, theta)
+        log_v = self.reference.log_prob(z) + torch.diagonal(self.w.log_prob(torch.cat([z, theta_unsqueezed], dim = -1)), 0, -2, -1) + self.T.log_det_J(x, theta)
         return log_v - torch.logsumexp(log_v, dim = -1, keepdim= True)
 
     def sample_latent(self,x, theta):

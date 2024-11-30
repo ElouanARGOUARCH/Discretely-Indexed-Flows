@@ -2,6 +2,7 @@ import torch
 from tqdm import tqdm
 from models_dif.invertible_mappings import LocationScale
 from models_dif.weight_functions import SoftmaxWeight
+from models_dif.reference_distributions import GaussianReference, NormalReference
 
 class DiagGaussianMixtEM(torch.nn.Module):
     def __init__(self,target_samples,K):
@@ -91,32 +92,28 @@ class DIFDensityEstimator(torch.nn.Module):
         self.K = K
         self.w = torch.distributions.Dirichlet(torch.ones(target_samples.shape[0])).sample()
         if estimate_reference_moments:
-            self.reference_mean = torch.mean(self.target_samples,dim = 0)
-            _ = torch.cov(self.target_samples.T)
-            self.reference_cov = ((_.T + _)/2).reshape(self.p, self.p)
+            self.reference_distribution = GaussianReference(self.p)
+            self.reference_distribution.estimate_moments(self.target_samples)
         else:
-            self.reference_mean =torch.zeros(self.p)
-            self.reference_cov = torch.eye(self.p)
+            self.reference_distribution = NormalReference(self.p)
 
         self.W = SoftmaxWeight(self.K, self.p, hidden_dims)
-
         self.T = LocationScale(self.K, self.p)
-        if not estimate_reference_moments:
-            self.T.m = torch.nn.Parameter(self.target_samples[torch.randint(low= 0, high = self.target_samples.shape[0],size = [self.K])])
-            self.T.log_s = torch.nn.Parameter(torch.log(torch.var(self.target_samples, dim = 0).unsqueeze(0).repeat(self.K,1) + 1e-6 *torch.ones(self.K, self.p))/2)
 
-    def EM_pretraining(self, epochs, verbose = False):
-        em = DiagGaussianMixtEM(self.target_samples,self.K)
+
+    def EM_pretraining(self, epochs, verbose = False, num_samples = None):
+        if num_samples is None:
+            num_samples = self.target_samples.shape[0]
+        else:
+            num_samples = torch.min(torch.tensor([num_samples, self.target_samples.shape[0]]))
+        em = DiagGaussianMixtEM(self.target_samples[:num_samples],self.K)
         em.train(epochs, verbose)
         self.T.m = torch.nn.Parameter(em.m)
         self.T.log_s = torch.nn.Parameter(em.log_s)
         self.W.f[-1].weight = torch.nn.Parameter(torch.zeros(self.K,self.W.network_dimensions[-2]))
         self.W.f[-1].bias = torch.nn.Parameter(em.log_pi)
-        self.reference_mean = torch.zeros(self.p)
-        self.reference_cov = torch.eye(self.p)
+        self.reference_distribution = NormalReference(self.p)
 
-    def reference_log_prob(self,z):
-        return torch.distributions.MultivariateNormal(self.reference_mean.to(z.device), self.reference_cov.to(z.device)).log_prob(z)
 
     def compute_number_params(self):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
@@ -133,10 +130,10 @@ class DIFDensityEstimator(torch.nn.Module):
 
     def log_prob(self, x):
         z = self.T.forward(x)
-        return torch.logsumexp(self.reference_log_prob(z) + torch.diagonal(self.W.log_prob(z),0,-2,-1) + self.T.log_det_J(x),dim=-1)
+        return torch.logsumexp(self.reference_distribution.log_prob(z) + torch.diagonal(self.W.log_prob(z),0,-2,-1) + self.T.log_det_J(x),dim=-1)
 
     def sample(self, num_samples):
-        z = torch.distributions.MultivariateNormal(self.reference_mean, self.reference_cov).sample(num_samples)
+        z = self.reference_distribution.sample(num_samples)
         x = self.T.backward(z)
         pick = torch.distributions.Categorical(torch.exp(self.W.log_prob(z))).sample()
         return x[range(x.shape[0]), pick, :]

@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-class MultivariateNormalReference(nn.Module):
+class GaussianReference(nn.Module):
     def __init__(self, p):
         super().__init__()
         self.p = p
@@ -23,3 +23,15 @@ class MultivariateNormalReference(nn.Module):
         cov = self.cov.to(z.device)
         self.distribution = torch.distributions.MultivariateNormal(mean,cov)
         return self.distribution.log_prob(z)
+
+class NormalReference(nn.Module):
+    def __init__(self, p):
+        super().__init__()
+        self.p = p
+
+    def sample(self, num_samples):
+        shape = num_samples.append(self.p)
+        return torch.randn(shape)
+
+    def log_prob(self, z):
+        return -torch.sum(torch.square(z), dim = -1)/2 - self.p*torch.log(torch.tensor(2 * torch.pi))/2

@@ -3,7 +3,7 @@ from torch import nn
 from torch.distributions import Categorical
 from tqdm import tqdm
 
-from models_dif.reference_distributions import MultivariateNormalReference
+from models_dif.reference_distributions import GaussianReference, NormalReference
 from models_dif.invertible_mappings import LocationScale
 from models_dif.weight_functions import SoftmaxWeight
 
